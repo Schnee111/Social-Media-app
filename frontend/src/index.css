@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-black text-white antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 active:scale-95;
+  }
+
+  .btn-gradient {
+    @apply bg-gradient-instagram text-white hover:opacity-90 active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-800 text-white hover:bg-dark-700 active:scale-95;
+  }
+
+  .btn-outline {
+    @apply border border-dark-700 text-white hover:bg-dark-900 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-gray-400 hover:text-white hover:bg-dark-900;
+  }
+  
+  /* Inputs */
+  .input {
+    @apply w-full px-4 py-3 bg-dark-900 border border-dark-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:ring-red-500;
+  }
+
+  .textarea {
+    @apply input min-h-[100px] resize-none;
+  }
+  
+  /* Cards */
+  .card {
+    @apply bg-dark-900 rounded-xl border border-dark-800;
+  }
+
+  .card-hover {
+    @apply card hover:bg-dark-800 transition-colors cursor-pointer;
+  }
+
+  /* Avatar */
+  .avatar {
+    @apply rounded-full bg-gradient-instagram flex items-center justify-center overflow-hidden;
+  }
+
+  .avatar-ring {
+    @apply p-0.5 bg-gradient-instagram rounded-full;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary-900/50 text-primary-400 border border-primary-800;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-gray-700 border-t-white;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-dark-800;
+  }
+
+  /* Link */
+  .link {
+    @apply text-primary-500 hover:text-primary-400 transition-colors;
+  }
+
+  /* Post card specific */
+  .post-card {
+    @apply card mb-4;
+  }
+
+  .post-header {
+    @apply flex items-center justify-between p-4;
+  }
+
+  .post-content {
+    @apply px-4 py-2;
+  }
+
+  .post-actions {
+    @apply flex items-center gap-4 px-4 py-3 border-t border-dark-800;
+  }
+
+  .post-action-btn {
+    @apply flex items-center gap-2 text-gray-400 hover:text-white transition-colors cursor-pointer;
+  }
+
+  /* Navbar */
+  .navbar {
+    @apply bg-black border-b border-dark-800 sticky top-0 z-50 backdrop-blur-sm bg-opacity-80;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    @apply bg-black border-r border-dark-800 h-screen sticky top-0;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/80 backdrop-blur-sm z-50;
+  }
+
+  .modal-content {
+    @apply card max-w-lg w-full mx-auto mt-20;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

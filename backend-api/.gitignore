@@ -1,0 +1,85 @@
+# ==========================================
+# ENVIRONMENT VARIABLES
+# ==========================================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# ==========================================
+# NODE MODULES
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ==========================================
+# UPLOADS & FILES
+# ==========================================
+uploads/*
+!uploads/.gitkeep
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# ==========================================
+# OPERATING SYSTEM FILES
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# IDE & EDITORS
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.vs/
+
+# ==========================================
+# BUILD & CACHE
+# ==========================================
+dist/
+build/
+.cache/
+.temp/
+.tmp/
+
+# ==========================================
+# TESTING
+# ==========================================
+coverage/
+.nyc_output/
+test-results/
+
+# ==========================================
+# LOGS
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# MISC
+# ==========================================
+.npm
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
