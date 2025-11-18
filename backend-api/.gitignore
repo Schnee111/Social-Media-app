@@ -19,7 +19,7 @@ lerna-debug.log*
 # ==========================================
 # UPLOADS & FILES
 # ==========================================
-uploads/*
+# uploads/*
 !uploads/.gitkeep
 *.log
 *.pid
