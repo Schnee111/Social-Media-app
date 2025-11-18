@@ -23,8 +23,8 @@ const Layout = () => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <Link to="/" className="mb-8 px-3">
-            <h1 className="text-2xl font-bold bg-gradient-instagram bg-clip-text text-transparent">
-              SocialApp
+            <h1 className="text-4xl font-normal bg-gradient-instagram bg-clip-text text-transparent" style={{ fontFamily: 'Pacifico, cursive' }}>
+              ProGram
             </h1>
           </Link>
 

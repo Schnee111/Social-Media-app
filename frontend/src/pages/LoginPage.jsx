@@ -50,10 +50,10 @@ const LoginPage = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-instagram rounded-2xl mb-4">
-            <span className="text-3xl font-bold text-white">S</span>
-          </div>
-          <h2 className="text-3xl font-bold text-white">
+          <h1 className="text-6xl font-normal mb-4 bg-gradient-instagram bg-clip-text text-transparent" style={{ fontFamily: 'Pacifico, cursive' }}>
+            ProGram
+          </h1>
+          <h2 className="text-3xl font-bold text-white mt-4">
             Selamat Datang Kembali
           </h2>
           <p className="mt-2 text-gray-400">
