@@ -99,3 +99,5 @@ storybook-static/
 .eslintcache
 *.tgz
 .yarn-integrity
+
+package-lock.json
