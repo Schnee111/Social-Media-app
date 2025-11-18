@@ -98,6 +98,10 @@ storybook-static/
 # ==========================================
 .eslintcache
 *.tgz
+<<<<<<< Updated upstream
 .yarn-integrity
 
 package-lock.json
+=======
+.yarn-integrity
+>>>>>>> Stashed changes
