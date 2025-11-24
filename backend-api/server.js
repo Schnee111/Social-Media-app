@@ -4,7 +4,6 @@ const socketIo = require('socket.io'); // ✅ ADD
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const path = require('path');
 const connectDB = require('./src/config/db');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
@@ -156,15 +155,12 @@ app.get('/', (req, res) => {
             posts: '/api/posts',
             comments: '/api/comments',
             analytics: '/api/analytics',
-            messages: '/api/messages', // ✅ ADD
-            uploads: '/uploads'
+            messages: '/api/messages', 
         },
         socket: {
             connected: io.engine.clientsCount,
             onlineUsers: onlineUsers.size
-        } // ✅ ADD socket info
-            uploads: '/uploads'
-        }
+        } 
     });
 });
 
