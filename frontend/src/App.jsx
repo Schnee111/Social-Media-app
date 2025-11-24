@@ -11,7 +11,8 @@ import ExplorePage from './pages/ExplorePage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import CreatePostPage from './pages/CreatePostPage';
-import AnalyticsPage from './pages/AnalyticsPage'; // ✅ NEW IMPORT
+import AnalyticsPage from './pages/AnalyticsPage';
+import MessagesPage from './pages/MessagesPage';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -45,6 +46,8 @@ function App() {
                 <Route path="/explore" element={<ExplorePage />} />
                 <Route path="/create" element={<CreatePostPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/messages/:userId" element={<MessagesPage />} />
                 <Route path="/profile/:userId" element={<ProfilePage />} />
               </Route>
             </Route>
