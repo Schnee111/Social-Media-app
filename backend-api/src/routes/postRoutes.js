@@ -14,7 +14,7 @@ const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 // Create post with image upload
-router.post('/', protect, upload.single('image'), createPost);
+router.post('/', protect, upload('image'), createPost);
 
 // Get all posts (TAMBAH PROTECT!)
 router.get('/', protect, getAllPosts);

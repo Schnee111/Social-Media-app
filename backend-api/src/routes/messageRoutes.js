@@ -14,7 +14,7 @@ router.get('/conversations/list', messageController.getConversations);
 router.get('/unread/count', messageController.getUnreadCount);
 
 // POST route
-router.post('/', upload.single('media'), messageController.sendMessage);
+router.post('/', upload('media'), messageController.sendMessage);
 
 // Dynamic routes last
 router.get('/:userId', messageController.getMessages);

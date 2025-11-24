@@ -38,7 +38,8 @@ const sendMessage = async (req, res) => {
       senderId,
       receiverId,
       content: content || null,
-      media: req.file ? `/uploads/${req.file.filename}` : null,
+      // 🔄 req.file.filename adalah URL Azure penuh
+      media: req.file ? req.file.filename : null, 
       mediaType: req.file ? (req.file.mimetype.startsWith('image') ? 'image' : 'video') : null
     });
 

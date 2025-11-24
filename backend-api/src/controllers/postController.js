@@ -17,15 +17,15 @@ exports.createPost = async (req, res) => {
             });
         }
 
-        let imageUrl = null;
-        if (req.file) {
-            imageUrl = `/uploads/${req.file.filename}`;
+        let imageUrl = ''; // Inisialisasi sebagai string kosong
+        if (req.file && req.file.filename) { // cek req.file.filename (sudah berupa URL penuh)
+            imageUrl = req.file.filename;
         }
 
         const post = new Post({
             userId,
             content: content.trim(),
-            image: imageUrl || ''
+            image: imageUrl // Gunakan langsung imageUrl (URL Azure)
         });
 
         await post.save();
