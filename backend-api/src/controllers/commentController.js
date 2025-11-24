@@ -1,20 +1,19 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 
-// @desc    Create comment
+// @desc    Create comment or reply
 // @route   POST /api/comments/post/:postId
 // @access  Private
 exports.createComment = async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, parentId, replyToUserId } = req.body;
     const { postId } = req.params;
     const userId = req.user.userId;
 
-    console.log('📝 Creating comment:', { postId, userId, content });
+    console.log('📝 Creating comment/reply:', { postId, userId, parentId });
 
     // Validation
     if (!content || !content.trim()) {
-      console.log('❌ Content validation failed');
       return res.status(400).json({ 
         success: false,
         error: 'Content is required' 
@@ -24,33 +23,52 @@ exports.createComment = async (req, res) => {
     // Check if post exists
     const post = await Post.findById(postId);
     if (!post) {
-      console.log('❌ Post not found:', postId);
       return res.status(404).json({ 
         success: false,
         error: 'Post not found' 
       });
     }
 
-    console.log('✅ Post found, creating comment...');
+    // ✅ If replying, check parent comment exists
+    if (parentId) {
+      const parentComment = await Comment.findById(parentId);
+      if (!parentComment) {
+        return res.status(404).json({ 
+          success: false,
+          error: 'Parent comment not found' 
+        });
+      }
+      
+      // ✅ Ensure parent is on same post
+      if (parentComment.postId.toString() !== postId) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Parent comment is not on this post' 
+        });
+      }
+    }
 
-    // Create comment
+    // Create comment/reply
     const comment = await Comment.create({
       postId,
       userId,
       content: content.trim(),
+      parentId: parentId || null,
+      replyToUserId: replyToUserId || null
     });
 
     console.log('✅ Comment created:', comment._id);
 
     // Populate user data
     const populatedComment = await Comment.findById(comment._id)
-      .populate('userId', 'username avatar bio');
+      .populate('userId', 'username avatar bio')
+      .populate('replyToUserId', 'username');
 
     console.log('✅ Comment populated:', populatedComment);
 
     res.status(201).json({
       success: true,
-      message: 'Comment created successfully',
+      message: parentId ? 'Reply created successfully' : 'Comment created successfully',
       data: populatedComment,
     });
   } catch (error) {
@@ -62,19 +80,28 @@ exports.createComment = async (req, res) => {
   }
 };
 
-// @desc    Get comments by post
+// @desc    Get comments by post (with replies)
 // @route   GET /api/comments/post/:postId
 // @access  Public
 exports.getCommentsByPost = async (req, res) => {
   try {
     const { postId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
 
     console.log('📖 Getting comments for post:', postId);
 
-    const comments = await Comment.find({ postId })
+    // ✅ Get top-level comments only (parentId = null)
+    const comments = await Comment.find({ 
+      postId, 
+      parentId: null 
+    })
       .populate('userId', 'username avatar bio')
       .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
       .lean();
+
+    const total = await Comment.countDocuments({ postId, parentId: null });
 
     console.log(`✅ Found ${comments.length} comments`);
 
@@ -82,12 +109,62 @@ exports.getCommentsByPost = async (req, res) => {
       success: true,
       message: 'Comments retrieved successfully',
       data: comments,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (error) {
     console.error('❌ Get comments error:', error);
     res.status(500).json({ 
       success: false,
       error: error.message || 'Failed to get comments'
+    });
+  }
+};
+
+// ✅ NEW: Get replies for a comment
+// @route   GET /api/comments/:commentId/replies
+// @access  Public
+exports.getReplies = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    console.log('💬 Getting replies for comment:', commentId);
+
+    const replies = await Comment.find({ 
+      parentId: commentId 
+    })
+      .populate('userId', 'username avatar bio')
+      .populate('replyToUserId', 'username')
+      .sort({ createdAt: 1 }) // Oldest first for replies
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    const total = await Comment.countDocuments({ parentId: commentId });
+
+    console.log(`✅ Found ${replies.length} replies`);
+
+    res.json({
+      success: true,
+      message: 'Replies retrieved successfully',
+      data: replies,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('❌ Get replies error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Failed to get replies'
     });
   }
 };
@@ -100,8 +177,6 @@ exports.updateComment = async (req, res) => {
     const { content } = req.body;
     const userId = req.user.userId;
 
-    console.log('✏️ Updating comment:', req.params.id);
-
     if (!content || !content.trim()) {
       return res.status(400).json({ 
         success: false,
@@ -112,7 +187,6 @@ exports.updateComment = async (req, res) => {
     const comment = await Comment.findById(req.params.id);
 
     if (!comment) {
-      console.log('❌ Comment not found:', req.params.id);
       return res.status(404).json({ 
         success: false,
         error: 'Comment not found' 
@@ -121,7 +195,6 @@ exports.updateComment = async (req, res) => {
 
     // Check ownership
     if (comment.userId.toString() !== userId) {
-      console.log('❌ Unauthorized update attempt');
       return res.status(403).json({ 
         success: false,
         error: 'Not authorized to update this comment' 
@@ -132,9 +205,8 @@ exports.updateComment = async (req, res) => {
     await comment.save();
 
     const updatedComment = await Comment.findById(comment._id)
-      .populate('userId', 'username avatar bio');
-
-    console.log('✅ Comment updated');
+      .populate('userId', 'username avatar bio')
+      .populate('replyToUserId', 'username');
 
     res.json({
       success: true,
@@ -150,19 +222,16 @@ exports.updateComment = async (req, res) => {
   }
 };
 
-// @desc    Delete comment
+// @desc    Delete comment (and all replies)
 // @route   DELETE /api/comments/:id
 // @access  Private
 exports.deleteComment = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    console.log('🗑️ Deleting comment:', req.params.id);
-
     const comment = await Comment.findById(req.params.id);
 
     if (!comment) {
-      console.log('❌ Comment not found:', req.params.id);
       return res.status(404).json({ 
         success: false,
         error: 'Comment not found' 
@@ -171,16 +240,19 @@ exports.deleteComment = async (req, res) => {
 
     // Check ownership
     if (comment.userId.toString() !== userId) {
-      console.log('❌ Unauthorized delete attempt');
       return res.status(403).json({ 
         success: false,
         error: 'Not authorized to delete this comment' 
       });
     }
 
-    await comment.deleteOne();
+    // ✅ Delete all replies if this is a parent comment
+    if (!comment.parentId) {
+      await Comment.deleteMany({ parentId: comment._id });
+      console.log('✅ Deleted all replies for comment:', comment._id);
+    }
 
-    console.log('✅ Comment deleted');
+    await comment.deleteOne();
 
     res.json({
       success: true,
