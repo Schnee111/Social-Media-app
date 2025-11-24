@@ -10,7 +10,7 @@ const Layout = () => {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/explore', icon: Search, label: 'Explore' },
     { path: '/create', icon: PlusSquare, label: 'Create' },
-    { path: '/messages', icon: MessageCircle, label: 'Messages' }, // ✅ NEW
+    { path: '/messages', icon: MessageCircle, label: 'Messages' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: `/profile/${user?._id}`, icon: User, label: 'Profile' },
   ];

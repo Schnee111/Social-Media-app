@@ -11,9 +11,10 @@ import HomePage from './pages/HomePage';
 import ExplorePage from './pages/ExplorePage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
-import CreatePostPage from './pages/CreatePostPage';
+import CreatePage from './pages/CreatePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MessagesPage from './pages/MessagesPage';
+import StoryViewerPage from './pages/StoryViewerPage';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -46,12 +47,13 @@ function App() {
                 <Route element={<Layout />}>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/explore" element={<ExplorePage />} />
-                  <Route path="/create" element={<CreatePostPage />} />
+                  <Route path="/create" element={<CreatePage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/messages/:userId" element={<MessagesPage />} />
                   <Route path="/profile/:userId" element={<ProfilePage />} />
                 </Route>
+                <Route path="/stories/:userId" element={<StoryViewerPage />} />
               </Route>
 
               {/* 404 */}
