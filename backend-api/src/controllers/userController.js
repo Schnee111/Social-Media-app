@@ -344,3 +344,107 @@ exports.getSuggestedUsers = async (req, res) => {
     });
   }
 };
+
+// Add these functions to existing controller
+
+// @desc    Get user followers
+// @route   GET /api/users/:id/followers
+// @access  Public
+exports.getFollowers = async (req, res) => {
+  try {
+    const { id } = req.params; // ✅ CHANGED from userId
+    const currentUserId = req.user?.userId;
+
+    console.log('📋 Getting followers for user:', id);
+
+    // Get followers from Follower collection
+    const followers = await Follower.find({ followingId: id }) // ✅ CHANGED
+      .populate({
+        path: 'followerId',
+        select: 'username avatar bio'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Map to get user data
+    const followersList = followers.map(f => f.followerId);
+
+    // If current user is logged in, check if they follow each user
+    if (currentUserId) {
+      const followingIds = await Follower.find({ followerId: currentUserId })
+        .select('followingId')
+        .lean();
+      
+      const followingSet = new Set(followingIds.map(f => f.followingId.toString()));
+
+      followersList.forEach(user => {
+        user.isFollowing = followingSet.has(user._id.toString());
+      });
+    }
+
+    console.log(`✅ Found ${followersList.length} followers`);
+
+    res.json({
+      success: true,
+      message: 'Followers retrieved successfully',
+      data: followersList
+    });
+  } catch (error) {
+    console.error('❌ Get followers error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get followers'
+    });
+  }
+};
+
+// @desc    Get user following
+// @route   GET /api/users/:id/following
+// @access  Public
+exports.getFollowing = async (req, res) => {
+  try {
+    const { id } = req.params; // ✅ CHANGED from userId
+    const currentUserId = req.user?.userId;
+
+    console.log('📋 Getting following for user:', id);
+
+    // Get following from Follower collection
+    const following = await Follower.find({ followerId: id }) // ✅ CHANGED
+      .populate({
+        path: 'followingId',
+        select: 'username avatar bio'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Map to get user data
+    const followingList = following.map(f => f.followingId);
+
+    // If current user is logged in, check if they follow each user
+    if (currentUserId) {
+      const userFollowingIds = await Follower.find({ followerId: currentUserId })
+        .select('followingId')
+        .lean();
+      
+      const followingSet = new Set(userFollowingIds.map(f => f.followingId.toString()));
+
+      followingList.forEach(user => {
+        user.isFollowing = followingSet.has(user._id.toString());
+      });
+    }
+
+    console.log(`✅ Found ${followingList.length} following`);
+
+    res.json({
+      success: true,
+      message: 'Following retrieved successfully',
+      data: followingList
+    });
+  } catch (error) {
+    console.error('❌ Get following error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get following'
+    });
+  }
+};
