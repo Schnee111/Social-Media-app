@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect } = require('../middleware/auth');
+const azureUpload = require('../middleware/upload'); // ✅ Import Azure upload middleware
 
 // IMPORTANT: Specific routes BEFORE :id routes
 
@@ -17,8 +18,8 @@ router.get('/saved', protect, userController.getSavedPosts);
 // Get suggested users for messaging
 router.get('/suggestions', protect, userController.getSuggestedUsers);
 
-// Update profile
-router.put('/profile', protect, userController.updateProfile);
+// Update profile with Azure upload (field name: 'avatar')
+router.put('/profile', protect, azureUpload('avatar'), userController.updateProfile);
 
 // Get followers and following (BEFORE :id route!)
 router.get('/:id/followers', userController.getFollowers);

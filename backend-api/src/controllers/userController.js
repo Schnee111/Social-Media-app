@@ -106,51 +106,80 @@ exports.getUserProfile = async (req, res) => {
 // Update profile
 exports.updateProfile = async (req, res) => {
     try {
+        const { username, bio } = req.body;
         const userId = req.user.userId;
-        const { username, bio, avatar } = req.body;
+        const file = req.file;
 
-        const user = await User.findById(userId);
+        console.log('📝 Updating profile for user:', userId);
+        console.log('📦 Update data:', { username, bio, hasFile: !!file });
 
-        if (!user) {
-            return res.status(404).json({
+        // Validation
+        if (username && username.trim().length < 3) {
+            return res.status(400).json({
                 success: false,
-                error: 'User tidak ditemukan'
+                error: 'Username must be at least 3 characters'
             });
         }
 
-        // Update fields
-        if (username) {
-            // Check if username is taken by another user
-            const existingUser = await User.findOne({ 
-                username, 
-                _id: { $ne: userId } 
+        if (bio && bio.length > 150) {
+            return res.status(400).json({
+                success: false,
+                error: 'Bio must be less than 150 characters'
             });
-            
+        }
+
+        // Check if username is already taken (if changing username)
+        if (username) {
+            const existingUser = await User.findOne({ 
+                username: username.trim(),
+                _id: { $ne: userId }
+            });
+
             if (existingUser) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Username sudah digunakan'
+                    error: 'Username already taken'
                 });
             }
-            
-            user.username = username;
         }
-        
-        if (bio !== undefined) user.bio = bio;
-        if (avatar) user.avatar = avatar;
 
-        await user.save();
+        // Build update object
+        const updateData = {};
+        if (username) updateData.username = username.trim();
+        if (bio !== undefined) updateData.bio = bio.trim();
+        
+        // ✅ Handle avatar upload - req.file.filename is already Azure URL from middleware
+        if (file) {
+            updateData.avatar = file.filename; // This is the full Azure Blob URL
+            console.log('📷 Avatar URL from Azure:', file.filename);
+        }
+
+        // Update user
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            updateData,
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        console.log('✅ Profile updated successfully');
 
         res.json({
             success: true,
-            message: 'Profile berhasil diupdate',
-            data: user
+            message: 'Profile updated successfully',
+            data: updatedUser
         });
     } catch (error) {
-        console.error('Update profile error:', error);
+        console.error('❌ Update profile error:', error);
         res.status(500).json({
             success: false,
-            error: 'Terjadi kesalahan saat mengupdate profile'
+            error: error.message || 'Failed to update profile'
         });
     }
 };

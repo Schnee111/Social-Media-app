@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import PostCard from '../components/post/PostCard';
-import FollowersModal from '../components/user/FollowersModal'; // ✅ ADD
+import FollowersModal from '../components/user/FollowersModal';
+import EditProfileModal from '../components/user/EditProfileModal'; // ✅ ADD
 import { Loader2, Settings, Grid, Bookmark, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -13,8 +14,9 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('posts');
-  const [showFollowersModal, setShowFollowersModal] = useState(false); // ✅ ADD
-  const [followersModalType, setFollowersModalType] = useState('followers'); // ✅ ADD
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [followersModalType, setFollowersModalType] = useState('followers');
+  const [showEditModal, setShowEditModal] = useState(false); // ✅ ADD
 
   const isOwnProfile = currentUser?._id === userId;
 
@@ -64,7 +66,6 @@ const ProfilePage = () => {
     navigate(`/messages/${userId}`);
   };
 
-  // ✅ ADD: Handle followers/following click
   const handleShowFollowers = () => {
     setFollowersModalType('followers');
     setShowFollowersModal(true);
@@ -73,6 +74,11 @@ const ProfilePage = () => {
   const handleShowFollowing = () => {
     setFollowersModalType('following');
     setShowFollowersModal(true);
+  };
+
+  // ✅ ADD: Handle edit profile
+  const handleEditProfile = () => {
+    setShowEditModal(true);
   };
 
   if (profileLoading) {
@@ -113,7 +119,10 @@ const ProfilePage = () => {
               
               {/* Action Buttons */}
               {isOwnProfile ? (
-                <button className="btn btn-secondary flex items-center gap-2">
+                <button 
+                  onClick={handleEditProfile}
+                  className="btn btn-secondary flex items-center gap-2"
+                >
                   <Settings size={18} />
                   <span>Edit Profile</span>
                 </button>
@@ -152,7 +161,7 @@ const ProfilePage = () => {
               )}
             </div>
 
-            {/* Stats - ✅ ADD CLICKABLE */}
+            {/* Stats */}
             <div className="flex gap-8 mb-4">
               <div>
                 <span className="font-semibold">{profile?.postsCount || 0}</span>
@@ -236,12 +245,22 @@ const ProfilePage = () => {
         </div>
       )}
 
-      {/* ✅ ADD: Followers Modal */}
+      {/* Followers Modal */}
       <FollowersModal
         isOpen={showFollowersModal}
         onClose={() => setShowFollowersModal(false)}
         userId={userId}
         type={followersModalType}
+      />
+
+      {/* ✅ ADD: Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          refetchProfile();
+        }}
+        profile={profile}
       />
     </div>
   );
