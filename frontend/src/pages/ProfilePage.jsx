@@ -1,21 +1,24 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom'; // ✅ ADD useNavigate
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import PostCard from '../components/post/PostCard';
-import { Loader2, Settings, Grid, Bookmark, UserPlus, UserMinus, MessageCircle } from 'lucide-react'; // ✅ ADD MessageCircle
+import FollowersModal from '../components/user/FollowersModal'; // ✅ ADD
+import { Loader2, Settings, Grid, Bookmark, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 const ProfilePage = () => {
   const { userId } = useParams();
-  const navigate = useNavigate(); // ✅ ADD
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('posts'); // 'posts' or 'saved'
+  const [activeTab, setActiveTab] = useState('posts');
+  const [showFollowersModal, setShowFollowersModal] = useState(false); // ✅ ADD
+  const [followersModalType, setFollowersModalType] = useState('followers'); // ✅ ADD
 
   const isOwnProfile = currentUser?._id === userId;
 
-  // Get user profile (includes posts in response!)
+  // Get user profile
   const { data: profileData, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
     queryKey: ['profile', userId],
     queryFn: async () => {
@@ -24,7 +27,7 @@ const ProfilePage = () => {
     },
   });
 
-  // Get saved posts (only for own profile)
+  // Get saved posts
   const { data: savedPosts, isLoading: savedLoading, refetch: refetchSaved } = useQuery({
     queryKey: ['savedPosts'],
     queryFn: async () => {
@@ -57,9 +60,19 @@ const ProfilePage = () => {
     followMutation.mutate();
   };
 
-  // ✅ ADD: Handle send message
   const handleSendMessage = () => {
     navigate(`/messages/${userId}`);
+  };
+
+  // ✅ ADD: Handle followers/following click
+  const handleShowFollowers = () => {
+    setFollowersModalType('followers');
+    setShowFollowersModal(true);
+  };
+
+  const handleShowFollowing = () => {
+    setFollowersModalType('following');
+    setShowFollowersModal(true);
   };
 
   if (profileLoading) {
@@ -70,10 +83,8 @@ const ProfilePage = () => {
     );
   }
 
-  // Extract user and posts from profile data
   const profile = profileData?.user;
   const posts = profileData?.posts || [];
-
   const currentPosts = activeTab === 'posts' ? posts : savedPosts;
   const currentLoading = activeTab === 'posts' ? false : savedLoading;
 
@@ -108,14 +119,11 @@ const ProfilePage = () => {
                 </button>
               ) : (
                 <>
-                  {/* Follow/Unfollow Button */}
                   <button
                     onClick={handleFollow}
                     disabled={followMutation.isPending}
                     className={`btn flex items-center gap-2 ${
-                      profile?.isFollowing
-                        ? 'btn-secondary'
-                        : 'btn-primary'
+                      profile?.isFollowing ? 'btn-secondary' : 'btn-primary'
                     }`}
                   >
                     {followMutation.isPending ? (
@@ -133,7 +141,6 @@ const ProfilePage = () => {
                     )}
                   </button>
                   
-                  {/* ✅ ADD: Message Button */}
                   <button
                     onClick={handleSendMessage}
                     className="btn btn-secondary flex items-center gap-2"
@@ -145,20 +152,26 @@ const ProfilePage = () => {
               )}
             </div>
 
-            {/* Stats */}
+            {/* Stats - ✅ ADD CLICKABLE */}
             <div className="flex gap-8 mb-4">
               <div>
                 <span className="font-semibold">{profile?.postsCount || 0}</span>
                 <span className="text-gray-400 ml-1">posts</span>
               </div>
-              <div>
+              <button
+                onClick={handleShowFollowers}
+                className="hover:text-white transition-colors text-left"
+              >
                 <span className="font-semibold">{profile?.followersCount || 0}</span>
                 <span className="text-gray-400 ml-1">followers</span>
-              </div>
-              <div>
+              </button>
+              <button
+                onClick={handleShowFollowing}
+                className="hover:text-white transition-colors text-left"
+              >
                 <span className="font-semibold">{profile?.followingCount || 0}</span>
                 <span className="text-gray-400 ml-1">following</span>
-              </div>
+              </button>
             </div>
 
             {/* Bio */}
@@ -222,6 +235,14 @@ const ProfilePage = () => {
           </p>
         </div>
       )}
+
+      {/* ✅ ADD: Followers Modal */}
+      <FollowersModal
+        isOpen={showFollowersModal}
+        onClose={() => setShowFollowersModal(false)}
+        userId={userId}
+        type={followersModalType}
+      />
     </div>
   );
 };
