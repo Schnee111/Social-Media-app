@@ -17,15 +17,17 @@ exports.createPost = async (req, res) => {
             });
         }
 
-        let imageUrl = ''; // Inisialisasi sebagai string kosong
-        if (req.file && req.file.filename) { // cek req.file.filename (sudah berupa URL penuh)
-            imageUrl = req.file.filename;
+        // ✅ Handle multiple images
+        let imageUrls = [];
+        if (req.uploadedFiles && req.uploadedFiles.length > 0) {
+            imageUrls = req.uploadedFiles;
         }
 
         const post = new Post({
             userId,
             content: content.trim(),
-            image: imageUrl // Gunakan langsung imageUrl (URL Azure)
+            images: imageUrls, // Array of URLs
+            image: imageUrls[0] || '' // First image for backward compatibility
         });
 
         await post.save();
@@ -45,7 +47,7 @@ exports.createPost = async (req, res) => {
     }
 };
 
-// Get all posts (explore)
+// Get all posts tetap sama, hanya response yang berbeda
 exports.getAllPosts = async (req, res) => {
     try {
         const currentUserId = req.user.userId;
@@ -53,19 +55,17 @@ exports.getAllPosts = async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        // ⭐ Tambahkan filter untuk hanya posts dengan userId yang valid
         const posts = await Post.find()
             .populate({
                 path: 'userId',
                 select: 'username email avatar bio',
-                match: { _id: { $exists: true, $ne: null } } // ⭐ Filter user yang ada
+                match: { _id: { $exists: true, $ne: null } }
             })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .lean();
 
-        // ⭐ Filter out posts yang usernya null (orphaned posts)
         const validPosts = posts.filter(post => post.userId !== null);
 
         const postsWithDetails = await Promise.all(validPosts.map(async (post) => {
@@ -94,7 +94,7 @@ exports.getAllPosts = async (req, res) => {
             pagination: {
                 page,
                 limit,
-                total: validPosts.length, // ⭐ Update total count
+                total: validPosts.length,
                 pages: Math.ceil(total / limit)
             }
         });
@@ -107,7 +107,55 @@ exports.getAllPosts = async (req, res) => {
     }
 };
 
-// Get feed (following posts) - Apply same fix
+// Update post - tambahkan handling multiple images
+exports.updatePost = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { content } = req.body;
+        const userId = req.user.userId;
+
+        const post = await Post.findById(id);
+
+        if (!post) {
+            return res.status(404).json({
+                success: false,
+                error: 'Post tidak ditemukan'
+            });
+        }
+
+        if (post.userId.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                error: 'Anda tidak memiliki akses untuk mengupdate post ini'
+            });
+        }
+
+        if (content !== undefined) post.content = content.trim();
+        
+        // ✅ Update images jika ada upload baru
+        if (req.uploadedFiles && req.uploadedFiles.length > 0) {
+            post.images = req.uploadedFiles;
+            post.image = req.uploadedFiles[0];
+        }
+
+        await post.save();
+        await post.populate('userId', 'username email avatar bio');
+
+        res.json({
+            success: true,
+            message: 'Post berhasil diupdate',
+            data: post
+        });
+    } catch (error) {
+        console.error('Update post error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Terjadi kesalahan saat mengupdate post'
+        });
+    }
+};
+
+// getFeed, getPostById, deletePost, likePost, savePost tetap sama
 exports.getFeed = async (req, res) => {
     try {
         const currentUserId = req.user.userId;
@@ -126,14 +174,13 @@ exports.getFeed = async (req, res) => {
             .populate({
                 path: 'userId',
                 select: 'username email avatar bio',
-                match: { _id: { $exists: true, $ne: null } } // ⭐
+                match: { _id: { $exists: true, $ne: null } }
             })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .lean();
 
-        // ⭐ Filter out orphaned posts
         const validPosts = posts.filter(post => post.userId !== null);
 
         const postsWithDetails = await Promise.all(validPosts.map(async (post) => {
@@ -175,7 +222,6 @@ exports.getFeed = async (req, res) => {
     }
 };
 
-// Get post by ID
 exports.getPostById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -219,50 +265,6 @@ exports.getPostById = async (req, res) => {
     }
 };
 
-// Update post
-exports.updatePost = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { content, image } = req.body;
-        const userId = req.user.userId;
-
-        const post = await Post.findById(id);
-
-        if (!post) {
-            return res.status(404).json({
-                success: false,
-                error: 'Post tidak ditemukan'
-            });
-        }
-
-        if (post.userId.toString() !== userId) {
-            return res.status(403).json({
-                success: false,
-                error: 'Anda tidak memiliki akses untuk mengupdate post ini'
-            });
-        }
-
-        if (content !== undefined) post.content = content.trim();
-        if (image !== undefined) post.image = image;
-
-        await post.save();
-        await post.populate('userId', 'username email avatar bio');
-
-        res.json({
-            success: true,
-            message: 'Post berhasil diupdate',
-            data: post
-        });
-    } catch (error) {
-        console.error('Update post error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Terjadi kesalahan saat mengupdate post'
-        });
-    }
-};
-
-// Delete post
 exports.deletePost = async (req, res) => {
     try {
         const { id } = req.params;
@@ -304,7 +306,6 @@ exports.deletePost = async (req, res) => {
     }
 };
 
-// Like/Unlike post
 exports.likePost = async (req, res) => {
     try {
         const { id } = req.params;
@@ -359,7 +360,6 @@ exports.likePost = async (req, res) => {
     }
 };
 
-// Save/Unsave post
 exports.savePost = async (req, res) => {
     try {
         const { id } = req.params;
