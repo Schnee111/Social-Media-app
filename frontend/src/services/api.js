@@ -7,7 +7,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
+// Request interceptor to add token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,15 +21,13 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      console.error('❌ Unauthorized - clearing auth data');
+      console.error('Unauthorized - clearing auth data');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

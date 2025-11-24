@@ -4,6 +4,7 @@ const Post = require('../models/Post');
 const SavedPost = require('../models/SavedPost');
 const Like = require('../models/Like');
 const Comment = require('../models/Comment');
+const Conversation = require('../models/Conversation');
 
 // Get current user
 exports.getCurrentUser = async (req, res) => {
@@ -105,51 +106,80 @@ exports.getUserProfile = async (req, res) => {
 // Update profile
 exports.updateProfile = async (req, res) => {
     try {
+        const { username, bio } = req.body;
         const userId = req.user.userId;
-        const { username, bio, avatar } = req.body;
+        const file = req.file;
 
-        const user = await User.findById(userId);
+        console.log('📝 Updating profile for user:', userId);
+        console.log('📦 Update data:', { username, bio, hasFile: !!file });
 
-        if (!user) {
-            return res.status(404).json({
+        // Validation
+        if (username && username.trim().length < 3) {
+            return res.status(400).json({
                 success: false,
-                error: 'User tidak ditemukan'
+                error: 'Username must be at least 3 characters'
             });
         }
 
-        // Update fields
-        if (username) {
-            // Check if username is taken by another user
-            const existingUser = await User.findOne({ 
-                username, 
-                _id: { $ne: userId } 
+        if (bio && bio.length > 150) {
+            return res.status(400).json({
+                success: false,
+                error: 'Bio must be less than 150 characters'
             });
-            
+        }
+
+        // Check if username is already taken (if changing username)
+        if (username) {
+            const existingUser = await User.findOne({ 
+                username: username.trim(),
+                _id: { $ne: userId }
+            });
+
             if (existingUser) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Username sudah digunakan'
+                    error: 'Username already taken'
                 });
             }
-            
-            user.username = username;
         }
-        
-        if (bio !== undefined) user.bio = bio;
-        if (avatar) user.avatar = avatar;
 
-        await user.save();
+        // Build update object
+        const updateData = {};
+        if (username) updateData.username = username.trim();
+        if (bio !== undefined) updateData.bio = bio.trim();
+        
+        // ✅ Handle avatar upload - req.file.filename is already Azure URL from middleware
+        if (file) {
+            updateData.avatar = file.filename; // This is the full Azure Blob URL
+            console.log('📷 Avatar URL from Azure:', file.filename);
+        }
+
+        // Update user
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            updateData,
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        console.log('✅ Profile updated successfully');
 
         res.json({
             success: true,
-            message: 'Profile berhasil diupdate',
-            data: user
+            message: 'Profile updated successfully',
+            data: updatedUser
         });
     } catch (error) {
-        console.error('Update profile error:', error);
+        console.error('❌ Update profile error:', error);
         res.status(500).json({
             success: false,
-            error: 'Terjadi kesalahan saat mengupdate profile'
+            error: error.message || 'Failed to update profile'
         });
     }
 };
@@ -301,4 +331,149 @@ exports.searchUsers = async (req, res) => {
             error: 'Terjadi kesalahan saat mencari users'
         });
     }
+};
+
+// Get suggested users (users not yet chatted with)
+exports.getSuggestedUsers = async (req, res) => {
+  try {
+    const currentUserId = req.user.userId;
+
+    // Get users that current user has conversations with
+    const conversations = await Conversation.find({
+      participants: currentUserId
+    }).populate('participants', '_id');
+
+    const chattedUserIds = conversations.flatMap(conv => 
+      conv.participants
+        .filter(p => p._id.toString() !== currentUserId.toString())
+        .map(p => p._id)
+    );
+
+    // Get random users excluding current user and chatted users
+    const suggestedUsers = await User.find({
+      _id: { 
+        $nin: [...chattedUserIds, currentUserId]
+      }
+    })
+      .select('username avatar bio')
+      .limit(10);
+
+    console.log(`✅ Found ${suggestedUsers.length} suggested users`);
+
+    res.json({
+      success: true,
+      message: 'Suggested users retrieved successfully',
+      data: suggestedUsers
+    });
+  } catch (error) {
+    console.error('❌ Get suggested users error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Terjadi kesalahan saat mengambil suggested users'
+    });
+  }
+};
+
+// Add these functions to existing controller
+
+// @desc    Get user followers
+// @route   GET /api/users/:id/followers
+// @access  Public
+exports.getFollowers = async (req, res) => {
+  try {
+    const { id } = req.params; // ✅ CHANGED from userId
+    const currentUserId = req.user?.userId;
+
+    console.log('📋 Getting followers for user:', id);
+
+    // Get followers from Follower collection
+    const followers = await Follower.find({ followingId: id }) // ✅ CHANGED
+      .populate({
+        path: 'followerId',
+        select: 'username avatar bio'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Map to get user data
+    const followersList = followers.map(f => f.followerId);
+
+    // If current user is logged in, check if they follow each user
+    if (currentUserId) {
+      const followingIds = await Follower.find({ followerId: currentUserId })
+        .select('followingId')
+        .lean();
+      
+      const followingSet = new Set(followingIds.map(f => f.followingId.toString()));
+
+      followersList.forEach(user => {
+        user.isFollowing = followingSet.has(user._id.toString());
+      });
+    }
+
+    console.log(`✅ Found ${followersList.length} followers`);
+
+    res.json({
+      success: true,
+      message: 'Followers retrieved successfully',
+      data: followersList
+    });
+  } catch (error) {
+    console.error('❌ Get followers error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get followers'
+    });
+  }
+};
+
+// @desc    Get user following
+// @route   GET /api/users/:id/following
+// @access  Public
+exports.getFollowing = async (req, res) => {
+  try {
+    const { id } = req.params; // ✅ CHANGED from userId
+    const currentUserId = req.user?.userId;
+
+    console.log('📋 Getting following for user:', id);
+
+    // Get following from Follower collection
+    const following = await Follower.find({ followerId: id }) // ✅ CHANGED
+      .populate({
+        path: 'followingId',
+        select: 'username avatar bio'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Map to get user data
+    const followingList = following.map(f => f.followingId);
+
+    // If current user is logged in, check if they follow each user
+    if (currentUserId) {
+      const userFollowingIds = await Follower.find({ followerId: currentUserId })
+        .select('followingId')
+        .lean();
+      
+      const followingSet = new Set(userFollowingIds.map(f => f.followingId.toString()));
+
+      followingList.forEach(user => {
+        user.isFollowing = followingSet.has(user._id.toString());
+      });
+    }
+
+    console.log(`✅ Found ${followingList.length} following`);
+
+    res.json({
+      success: true,
+      message: 'Following retrieved successfully',
+      data: followingList
+    });
+  } catch (error) {
+    console.error('❌ Get following error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get following'
+    });
+  }
 };

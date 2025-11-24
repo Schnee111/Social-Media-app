@@ -25,6 +25,7 @@ lerna-debug.log*
 *.pid
 *.seed
 *.pid.lock
+package-lock.json
 
 # ==========================================
 # OPERATING SYSTEM FILES

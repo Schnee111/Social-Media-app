@@ -1,41 +1,91 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { 
-  Heart, 
-  MessageCircle, 
-  Send, 
-  Bookmark, 
+import {
+  Heart,
+  MessageCircle,
+  Bookmark,
   MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
   Trash2,
-  Edit,
-  X,
-  Check,
-  Loader2
+  Edit
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import CommentSection from '../comment/CommentSection';
 
-const PostCard = ({ post, onUpdate }) => {
+const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+
+const getMediaUrl = (mediaPath) => {
+  if (!mediaPath) return null;
+  if (mediaPath.startsWith('http')) return mediaPath;
+  return `${API_URL}${mediaPath}`;
+};
+
+const PostCard = ({ post, onUpdate, onOpenModal }) => {
   const { user: currentUser } = useAuth();
-  const [showComments, setShowComments] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.content);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  // Guard clause - jika user null, jangan render
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Guard clause
   if (!post.userId || !post.userId._id) {
-    console.warn('⚠️  Post with null user:', post._id);
-    return null; // Don't render this post
+    console.warn('⚠️ Post with null user:', post._id);
+    return null;
   }
 
   const isOwnPost = currentUser?._id === post.userId._id;
 
-  // Like mutation
+  // Get all media
+  const allMedia = post.images && post.images.length > 0
+    ? post.images
+    : post.image
+    ? [post.image]
+    : [];
+
+  const hasMultipleMedia = allMedia.length > 1;
+
+  // Story ring logic
+  const storiesFeed = queryClient.getQueryData(['storiesFeed']);
+  const postUserStoryGroup = storiesFeed?.find(group => group.user._id === post.userId._id);
+  const hasActiveStory = !!postUserStoryGroup;
+  const hasUnviewed = postUserStoryGroup?.hasUnviewed || false;
+
+  const getStoryRingClass = () => {
+    if (!hasActiveStory) return '';
+    return hasUnviewed ? 'p-0.5 bg-gradient-instagram' : 'p-0.5 border-2 border-dark-700';
+  };
+
+  const ringClass = getStoryRingClass();
+
+  const handleAvatarClick = (e) => {
+    if (hasActiveStory) {
+      e.preventDefault();
+      navigate(`/stories/${post.userId._id}`);
+    }
+  };
+
+  // Carousel navigation
+  const handlePrevMedia = (e) => {
+    e.stopPropagation();
+    setCurrentMediaIndex((prev) => (prev === 0 ? allMedia.length - 1 : prev - 1));
+  };
+
+  const handleNextMedia = (e) => {
+    e.stopPropagation();
+    setCurrentMediaIndex((prev) => (prev === allMedia.length - 1 ? 0 : prev + 1));
+  };
+
+  const isVideo = (url) => {
+    return url.toLowerCase().match(/\.(mp4|mov|avi|webm)$/);
+  };
+
+  // Mutations
   const likeMutation = useMutation({
     mutationFn: async () => {
       const response = await api.post(`/posts/${post._id}/like`);
@@ -49,7 +99,6 @@ const PostCard = ({ post, onUpdate }) => {
     },
   });
 
-  // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
       const response = await api.post(`/posts/${post._id}/save`);
@@ -63,24 +112,6 @@ const PostCard = ({ post, onUpdate }) => {
     },
   });
 
-  // Edit mutation
-  const editMutation = useMutation({
-    mutationFn: async (data) => {
-      const response = await api.put(`/posts/${post._id}`, data);
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success('Post berhasil diupdate');
-      setIsEditing(false);
-      setShowMenu(false);
-      onUpdate();
-    },
-    onError: (error) => {
-      toast.error(error.error || 'Gagal mengupdate post');
-    },
-  });
-
-  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await api.delete(`/posts/${post._id}`);
@@ -94,31 +125,14 @@ const PostCard = ({ post, onUpdate }) => {
     },
   });
 
-  const handleLike = () => {
+  const handleLike = (e) => {
+    e.stopPropagation();
     likeMutation.mutate();
   };
 
-  const handleSave = () => {
+  const handleSave = (e) => {
+    e.stopPropagation();
     saveMutation.mutate();
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-    setShowMenu(false);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditContent(post.content);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editContent.trim()) {
-      toast.error('Content tidak boleh kosong');
-      return;
-    }
-
-    editMutation.mutate({ content: editContent });
   };
 
   const handleDelete = () => {
@@ -127,31 +141,60 @@ const PostCard = ({ post, onUpdate }) => {
     }
   };
 
+  const handleCardClick = () => {
+    if (onOpenModal) {
+      onOpenModal(post);
+    }
+  };
+
   const timeAgo = formatDistanceToNow(new Date(post.createdAt), {
     addSuffix: true,
     locale: idLocale,
   });
 
+  const renderAvatarContent = () => (
+    <>
+      {post.userId.avatar ? (
+        <img
+          src={getMediaUrl(post.userId.avatar)}
+          alt={post.userId.username}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <span className="text-sm font-semibold">
+          {post.userId.username.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </>
+  );
+
+  // Truncate content for preview
+  const MAX_LENGTH = 100;
+  const displayContent = post.content.length > MAX_LENGTH
+    ? post.content.slice(0, MAX_LENGTH) + '...'
+    : post.content;
+
   return (
     <div className="post-card">
       {/* Header */}
       <div className="post-header">
-        <Link to={`/profile/${post.userId._id}`} className="flex items-center gap-3">
-          <div className="avatar-ring">
-            <div className="avatar w-10 h-10 bg-dark-800">
-              {post.userId.avatar ? (
-                <img 
-                  src={post.userId.avatar} 
-                  alt={post.userId.username}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-sm font-semibold">
-                  {post.userId.username.charAt(0).toUpperCase()}
-                </span>
-              )}
+        <Link
+          to={`/profile/${post.userId._id}`}
+          onClick={handleAvatarClick}
+          className="flex items-center gap-3"
+        >
+          {hasActiveStory ? (
+            <div className={`avatar-ring ${ringClass}`}>
+              <div className="avatar w-10 h-10 bg-dark-800 border-2 border-black">
+                {renderAvatarContent()}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="avatar w-10 h-10 bg-dark-800">
+              {renderAvatarContent()}
+            </div>
+          )}
+
           <div>
             <p className="font-semibold hover:text-gray-300 transition-colors">
               {post.userId.username}
@@ -160,11 +203,14 @@ const PostCard = ({ post, onUpdate }) => {
           </div>
         </Link>
 
-        {/* Menu */}
+        {/* Menu - Only for own posts */}
         {isOwnPost && (
           <div className="relative">
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
               className="btn-ghost p-2"
             >
               <MoreHorizontal size={20} />
@@ -172,16 +218,17 @@ const PostCard = ({ post, onUpdate }) => {
 
             {showMenu && (
               <>
-                {/* Backdrop untuk close menu */}
                 <div
                   className="fixed inset-0 z-10"
                   onClick={() => setShowMenu(false)}
                 />
-                
-                {/* Menu dropdown */}
+
                 <div className="absolute right-0 mt-2 w-48 card p-2 space-y-1 z-20">
                   <button
-                    onClick={handleEdit}
+                    onClick={() => {
+                      setShowMenu(false);
+                      onOpenModal && onOpenModal(post, 'edit');
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-blue-500 hover:bg-dark-800 rounded-lg transition-colors"
                   >
                     <Edit size={18} />
@@ -189,14 +236,9 @@ const PostCard = ({ post, onUpdate }) => {
                   </button>
                   <button
                     onClick={handleDelete}
-                    disabled={deleteMutation.isPending}
                     className="w-full flex items-center gap-2 px-3 py-2 text-red-500 hover:bg-dark-800 rounded-lg transition-colors"
                   >
-                    {deleteMutation.isPending ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <Trash2 size={18} />
-                    )}
+                    <Trash2 size={18} />
                     <span>Hapus Post</span>
                   </button>
                 </div>
@@ -206,14 +248,71 @@ const PostCard = ({ post, onUpdate }) => {
         )}
       </div>
 
-      {/* Image */}
-      {post.image && (
-        <div className="relative bg-dark-900">
-          <img
-            src={`http://localhost:5000${post.image}`}
-            alt="Post"
-            className="w-full max-h-[600px] object-cover"
-          />
+      {/* Media Carousel - Clickable to open modal */}
+      {allMedia.length > 0 && (
+        <div
+          className="relative bg-dark-900 group cursor-pointer"
+          onClick={handleCardClick}
+        >
+          {/* Current Media */}
+          <div className="relative w-full max-h-[600px] flex items-center justify-center bg-black">
+            {isVideo(allMedia[currentMediaIndex]) ? (
+              <video
+                key={currentMediaIndex}
+                src={getMediaUrl(allMedia[currentMediaIndex])}
+                className="w-full max-h-[600px] object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img
+                src={getMediaUrl(allMedia[currentMediaIndex])}
+                alt={`Post media ${currentMediaIndex + 1}`}
+                className="w-full max-h-[600px] object-contain"
+              />
+            )}
+          </div>
+
+          {/* Navigation - Only if multiple media */}
+          {hasMultipleMedia && (
+            <>
+              <button
+                onClick={handlePrevMedia}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              >
+                <ChevronLeft size={20} className="text-white" />
+              </button>
+
+              <button
+                onClick={handleNextMedia}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              >
+                <ChevronRight size={20} className="text-white" />
+              </button>
+
+              {/* Dots Indicator */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+                {allMedia.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentMediaIndex(index);
+                    }}
+                    className={`transition-all ${
+                      index === currentMediaIndex
+                        ? 'w-2 h-2 bg-primary-500'
+                        : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/70'
+                    } rounded-full`}
+                  />
+                ))}
+              </div>
+
+              {/* Counter Badge */}
+              <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-medium z-10">
+                {currentMediaIndex + 1}/{allMedia.length}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -233,15 +332,11 @@ const PostCard = ({ post, onUpdate }) => {
         </button>
 
         <button
-          onClick={() => setShowComments(!showComments)}
+          onClick={handleCardClick}
           className="post-action-btn"
         >
           <MessageCircle size={24} />
           {post.commentsCount > 0 && <span>{post.commentsCount}</span>}
-        </button>
-
-        <button className="post-action-btn">
-          <Send size={24} />
         </button>
 
         <button
@@ -257,57 +352,32 @@ const PostCard = ({ post, onUpdate }) => {
         </button>
       </div>
 
-      {/* Content */}
-      <div className="post-content pb-2">
-        {isEditing ? (
-          <div className="space-y-2">
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="input w-full min-h-[80px] resize-none"
-              placeholder="Edit caption..."
-              disabled={editMutation.isPending}
-            />
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSaveEdit}
-                disabled={editMutation.isPending}
-                className="btn btn-primary btn-sm flex items-center gap-2"
-              >
-                {editMutation.isPending ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Check size={16} />
-                )}
-                <span>Simpan</span>
-              </button>
-              <button
-                onClick={handleCancelEdit}
-                disabled={editMutation.isPending}
-                className="btn btn-secondary btn-sm flex items-center gap-2"
-              >
-                <X size={16} />
-                <span>Batal</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm">
-            <Link
-              to={`/profile/${post.userId._id}`}
-              className="font-semibold hover:text-gray-300 transition-colors"
-            >
-              {post.userId.username}
-            </Link>{' '}
-            <span className="text-gray-300">{post.content}</span>
-          </p>
+      {/* Content Preview - Clickable to open modal */}
+      <div className="post-content pb-2 cursor-pointer" onClick={handleCardClick}>
+        <p className="text-sm break-words">
+          <Link
+            to={`/profile/${post.userId._id}`}
+            className="font-semibold hover:text-gray-300 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {post.userId.username}
+          </Link>{' '}
+          <span className="text-gray-300">{displayContent}</span>
+          {post.content.length > MAX_LENGTH && (
+            <span className="text-gray-400"> ...selengkapnya</span>
+          )}
+        </p>
+
+        {/* Comments Preview */}
+        {post.commentsCount > 0 && (
+          <button
+            onClick={handleCardClick}
+            className="text-sm text-gray-400 hover:text-gray-300 mt-1 transition-colors"
+          >
+            Lihat {post.commentsCount} komentar
+          </button>
         )}
       </div>
-
-      {/* Comments Section */}
-      {showComments && (
-        <CommentSection postId={post._id} onCommentUpdate={onUpdate} />
-      )}
     </div>
   );
 };

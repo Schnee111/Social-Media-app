@@ -15,7 +15,7 @@ const LikeSchema = new Schema({
         index: true
     }
 }, {
-    timestamps: false,
+    timestamps: true,
     _id: true
 });
 

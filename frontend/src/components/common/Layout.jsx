@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Home, Search, PlusSquare, Heart, User, LogOut, BarChart3 } from 'lucide-react'; // ✅ Added BarChart3
+import { Home, Search, PlusSquare, MessageCircle, User, LogOut, BarChart3 } from 'lucide-react';
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -10,16 +10,20 @@ const Layout = () => {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/explore', icon: Search, label: 'Explore' },
     { path: '/create', icon: PlusSquare, label: 'Create' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' }, // ✅ NEW
+    { path: '/messages', icon: MessageCircle, label: 'Messages' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: `/profile/${user?._id}`, icon: User, label: 'Profile' },
   ];
 
   const isActive = (path) => location.pathname === path;
+  
+  // ✅ Check if current page is Messages
+  const isMessagesPage = location.pathname.startsWith('/messages');
 
   return (
     <div className="min-h-screen bg-black">
       {/* Sidebar - Desktop */}
-      <aside className="sidebar hidden lg:block fixed left-0 top-0 w-64 p-4">
+      <aside className="sidebar hidden lg:block fixed left-0 top-0 w-64 p-4 h-screen border-r border-dark-800">
         <div className="flex flex-col h-full">
           {/* Logo */}
           <Link to="/" className="mb-8 px-3">
@@ -76,13 +80,14 @@ const Layout = () => {
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen">
-        <div className="max-w-4xl mx-auto p-4 pb-20 lg:pb-4">
+        {/* ✅ Conditional padding - full width for messages, constrained for others */}
+        <div className={isMessagesPage ? 'h-screen' : 'max-w-4xl mx-auto p-4 pb-20 lg:pb-4'}>
           <Outlet />
         </div>
       </main>
 
       {/* Bottom Navigation - Mobile */}
-      <nav className="navbar lg:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-dark-800">
+      <nav className="navbar lg:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-dark-800 z-50">
         <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
           {navItems.map((item) => (
             <Link

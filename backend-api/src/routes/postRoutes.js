@@ -13,28 +13,18 @@ const {
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
-// Create post with image upload
-router.post('/', protect, upload.single('image'), createPost);
+// ✅ Update: allow multiple images (max 10)
+router.post('/', protect, upload('images', 10), createPost);
 
-// Get all posts (TAMBAH PROTECT!)
 router.get('/', protect, getAllPosts);
-
-// Get feed
 router.get('/feed', protect, getFeed);
-
-// Get post by ID
 router.get('/:id', protect, getPostById);
 
-// Update post
-router.put('/:id', protect, updatePost);
+// ✅ Update: allow updating with multiple images
+router.put('/:id', protect, upload('images', 10), updatePost);
 
-// Delete post
 router.delete('/:id', protect, deletePost);
-
-// Like/unlike post
 router.post('/:id/like', protect, likePost);
-
-// Save/unsave post
 router.post('/:id/save', protect, savePost);
 
 module.exports = router;
