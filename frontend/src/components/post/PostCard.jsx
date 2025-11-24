@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query'; 
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
@@ -20,38 +20,62 @@ import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import CommentSection from '../comment/CommentSection';
 
-// Helper untuk mendapatkan URL gambar yang benar
+// Helper to get full media URL
+const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 const getMediaUrl = (mediaPath) => {
-  if (!mediaPath) return null;
-  // Cek jika path sudah berupa URL penuh (Azure Blob URL)
-  if (mediaPath.startsWith('http')) return mediaPath;
-  
-  // Jika masih berupa path relatif (misal: /uploads/...)
-  // Kita harus menggunakan VITE_API_URL sebagai fallback base.
-  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-  return `${API_URL}${mediaPath}`;
+    if (!mediaPath) return null;
+    if (mediaPath.startsWith('http')) return mediaPath;
+    return `${API_URL}${mediaPath}`;
 };
-
-const isVideo = (url) => {
-    if (!url) return false;
-    const lowerUrl = url.toLowerCase();
-    return lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.mov') || lowerUrl.endsWith('.avi');
-}
 
 const PostCard = ({ post, onUpdate }) => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
   const [showComments, setShowComments] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
 
-  // Guard clause - jika user null, jangan render
+  // Guard clause
   if (!post.userId || !post.userId._id) {
     console.warn('⚠️  Post with null user:', post._id);
-    return null; // Don't render this post
+    return null; 
   }
-
+  
   const isOwnPost = currentUser?._id === post.userId._id;
+
+  // 1. LOGIKA STORY RING
+  const storiesFeed = queryClient.getQueryData(['storiesFeed']);
+  
+  const postUserStoryGroup = storiesFeed?.find(group => 
+      group.user._id === post.userId._id
+  );
+  
+  const hasActiveStory = !!postUserStoryGroup;
+  const hasUnviewed = postUserStoryGroup?.hasUnviewed || false;
+  
+  // 2. Helper untuk menentukan kelas border
+  const getStoryRingClass = () => {
+      if (!hasActiveStory) return ''; 
+      
+      // Menggunakan p-0.5 untuk ring yang lebih tipis
+      return hasUnviewed
+          ? 'p-0.5 bg-gradient-instagram' 
+          : 'p-0.5 border-2 border-dark-700'; 
+  };
+  
+  const ringClass = getStoryRingClass();
+
+  // Handler saat avatar/ring diklik
+  const handleAvatarClick = (e) => {
+      if (hasActiveStory) {
+          e.preventDefault(); 
+          navigate(`/stories/${post.userId._id}`);
+      }
+  };
+  // 🔚 LOGIKA STORY RING
 
   // Like mutation
   const likeMutation = useMutation({
@@ -150,29 +174,47 @@ const PostCard = ({ post, onUpdate }) => {
     locale: idLocale,
   });
 
-  const mediaUrl = getMediaUrl(post.image);
-  const isVideoPost = isVideo(mediaUrl);
+  const renderAvatarContent = () => (
+    <>
+      {post.userId.avatar ? (
+        <img 
+          src={getMediaUrl(post.userId.avatar)} 
+          alt={post.userId.username}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <span className="text-sm font-semibold">
+          {post.userId.username.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div className="post-card">
       {/* Header */}
       <div className="post-header">
-        <Link to={`/profile/${post.userId._id}`} className="flex items-center gap-3">
-          <div className="avatar-ring">
-            <div className="avatar w-10 h-10 bg-dark-800">
-              {post.userId.avatar ? (
-                <img 
-                  src={post.userId.avatar} 
-                  alt={post.userId.username}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-sm font-semibold">
-                  {post.userId.username.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-          </div>
+        <Link 
+            to={`/profile/${post.userId._id}`} 
+            onClick={handleAvatarClick} 
+            className="flex items-center gap-3"
+        >
+          
+          {/* 🚨 KUNCI PERBAIKAN: Gunakan ternary untuk merender ring/non-ring */}
+          {hasActiveStory ? (
+              // Jika ada story, render wrapper ring
+              <div className={`avatar-ring ${ringClass}`}> 
+                  <div className="avatar w-10 h-10 bg-dark-800 border-2 border-black"> 
+                    {renderAvatarContent()}
+                  </div>
+              </div>
+          ) : (
+              // Jika tidak ada story, render avatar tanpa wrapper ring
+              <div className="avatar w-10 h-10 bg-dark-800">
+                {renderAvatarContent()}
+              </div>
+          )}
+
           <div>
             <p className="font-semibold hover:text-gray-300 transition-colors">
               {post.userId.username}
@@ -227,27 +269,20 @@ const PostCard = ({ post, onUpdate }) => {
         )}
       </div>
 
-      {/* media */}
+      {/* Image */}
       {post.image && (
         <div className="relative bg-dark-900">
-          {isVideoPost ? (
-            // 🆕 Tampilkan tag video
+          {post.image.toLowerCase().endsWith('.mp4') || post.image.toLowerCase().endsWith('.mov') || post.image.toLowerCase().endsWith('.avi') ? (
             <video
-                src={mediaUrl}
-                controls
-                className="w-full max-h-[600px] object-cover"
-                onError={(e) => { console.error('Video load error:', post.image); e.target.style.display = 'none'; }}
+              src={getMediaUrl(post.image)}
+              controls
+              className="w-full max-h-[600px] object-cover"
             />
           ) : (
-            // Tampilkan tag img untuk gambar
             <img
-              src={mediaUrl}
+              src={getMediaUrl(post.image)}
               alt="Post"
               className="w-full max-h-[600px] object-cover"
-              onError={(e) => {
-                  console.error('Image load error:', post.image);
-                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23262626"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23666"%3EImage load error%3C/text%3E%3C/svg%3E';
-                }}
             />
           )}
         </div>

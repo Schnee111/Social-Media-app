@@ -31,7 +31,7 @@ const StoryItem = ({ user, hasUnviewed, isOwnStory, hasActiveStories }) => {
     };
 
     const getStoryBorderClass = () => {
-        // 🚨 KUNCI PERUBAHAN: Gunakan p-1 (4px padding total) untuk semua kondisi agar ukuran luar sama.
+        // Gunakan p-1 (4px padding total) untuk semua kondisi agar ukuran luar sama.
         if (isOwnStory) {
             if (hasActiveStories) {
                 // Sudah ada story: Gunakan border gradient jika unviewed
@@ -72,7 +72,7 @@ const StoryItem = ({ user, hasUnviewed, isOwnStory, hasActiveStories }) => {
         >
             {/* Ring */}
             <div className={getStoryBorderClass() + ' rounded-full relative'}>
-                {/* 🚨 Avatar inner border (wajib) */}
+                {/* Avatar inner border (wajib) */}
                 <div className="avatar w-14 h-14 bg-dark-800 border-2 border-black"> 
                     {getAvatarContent()}
                 </div>
