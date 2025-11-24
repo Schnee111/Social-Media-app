@@ -4,27 +4,43 @@ import { useAuth } from '../../context/AuthContext';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { Trash2, Edit, X, Check, Loader2, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const CommentItem = ({ comment, onUpdate, isReply = false }) => {
+// Helper to get full media URL
+const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const getMediaUrl = (mediaPath) => {
+  if (!mediaPath) return null;
+  if (mediaPath.startsWith('http')) return mediaPath;
+  return `${API_URL}${mediaPath}`;
+};
+
+const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = null }) => {
   const { user: currentUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [showReplies, setShowReplies] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
 
   const isOwnComment = currentUser?._id === comment.userId._id;
+  
+  // Tentukan apakah comment terlalu panjang (lebih dari 150 karakter)
+  const MAX_LENGTH = 150;
+  const isLongComment = comment.content.length > MAX_LENGTH;
+  const displayContent = showFullContent || !isLongComment 
+    ? comment.content 
+    : comment.content.slice(0, MAX_LENGTH) + '...';
 
-  // ✅ Fetch replies for this comment
+  // Fetch replies (hanya untuk parent comment)
   const { data: repliesData, refetch: refetchReplies } = useQuery({
     queryKey: ['replies', comment._id],
     queryFn: async () => {
       const response = await api.get(`/comments/${comment._id}/replies`);
       return response.data.data;
     },
-    enabled: showReplies && !isReply, // Only fetch if showing replies and not already a reply
+    enabled: showReplies && !isReply,
   });
 
   // Edit mutation
@@ -57,7 +73,7 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
     },
   });
 
-  // ✅ Reply mutation
+  // Reply mutation
   const replyMutation = useMutation({
     mutationFn: async (data) => {
       const response = await api.post(`/comments/post/${comment.postId}`, data);
@@ -67,8 +83,13 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
       toast.success('Reply posted successfully');
       setIsReplying(false);
       setReplyContent('');
-      setShowReplies(true); // Automatically show replies
-      refetchReplies();
+      
+      // Jika ini reply dari parent comment, set showReplies true
+      if (!isReply) {
+        setShowReplies(true);
+        refetchReplies();
+      }
+      
       onUpdate();
     },
     onError: (error) => {
@@ -76,21 +97,11 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
     },
   });
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditContent(comment.content);
-  };
-
   const handleSaveEdit = () => {
     if (!editContent.trim()) {
       toast.error('Content cannot be empty');
       return;
     }
-
     editMutation.mutate({ content: editContent.trim() });
   };
 
@@ -100,17 +111,19 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
     }
   };
 
-  // ✅ Handle reply submission
   const handleReply = () => {
     if (!replyContent.trim()) {
       toast.error('Reply cannot be empty');
       return;
     }
-
+    
+    // Jika ini reply, gunakan parentCommentId, jika parent gunakan comment._id
+    const targetParentId = isReply ? parentCommentId : comment._id;
+    
     replyMutation.mutate({
       content: replyContent.trim(),
-      parentId: comment._id, // ✅ Link to parent comment
-      replyToUserId: comment.userId._id, // ✅ Who we're replying to
+      parentId: targetParentId,
+      replyToUserId: comment.userId._id,
     });
   };
 
@@ -119,14 +132,14 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
   });
 
   return (
-    <div className={`${isReply ? 'ml-12' : ''}`}>
+    <div className={`${isReply ? 'ml-6' : ''}`}>
       <div className="flex gap-3">
         {/* Avatar */}
-        <Link to={`/profile/${comment.userId._id}`}>
-          <div className="avatar w-8 h-8 bg-dark-800 flex-shrink-0">
+        <Link to={`/profile/${comment.userId._id}`} className="flex-shrink-0">
+          <div className="avatar w-8 h-8 bg-dark-800">
             {comment.userId.avatar ? (
               <img
-                src={comment.userId.avatar}
+                src={getMediaUrl(comment.userId.avatar)}
                 alt={comment.userId.username}
                 className="w-full h-full object-cover"
               />
@@ -155,93 +168,105 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
                 <button
                   onClick={handleSaveEdit}
                   disabled={editMutation.isPending}
-                  className="btn btn-primary btn-sm flex items-center gap-1"
+                  className="text-xs text-blue-400 hover:text-blue-300 font-semibold"
                 >
                   {editMutation.isPending ? (
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={12} className="animate-spin inline" />
                   ) : (
-                    <Check size={14} />
+                    'Save'
                   )}
-                  <span>Save</span>
                 </button>
                 <button
-                  onClick={handleCancelEdit}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(comment.content);
+                  }}
                   disabled={editMutation.isPending}
-                  className="btn btn-secondary btn-sm flex items-center gap-1"
+                  className="text-xs text-gray-400 hover:text-white font-semibold"
                 >
-                  <X size={14} />
-                  <span>Cancel</span>
+                  Cancel
                 </button>
               </div>
             </div>
           ) : (
             /* Display Mode */
             <>
-              <div className="bg-dark-800 rounded-2xl px-3 py-2">
-                <Link
-                  to={`/profile/${comment.userId._id}`}
-                  className="font-semibold text-sm hover:underline"
-                >
-                  {comment.userId.username}
-                </Link>
-                {/* ✅ Show who this reply is to */}
-                {comment.replyToUserId && (
+              <div>
+                <p className="text-sm break-words">
                   <Link
-                    to={`/profile/${comment.replyToUserId._id}`}
-                    className="text-primary-500 text-sm ml-1 hover:underline"
+                    to={`/profile/${comment.userId._id}`}
+                    className="font-semibold hover:underline"
                   >
-                    @{comment.replyToUserId.username}
+                    {comment.userId.username}
                   </Link>
-                )}
-                <p className="text-sm text-gray-300 mt-1 break-words">
-                  {comment.content}
+                  {comment.replyToUserId && (
+                    <>
+                      {' '}
+                      <span className="text-gray-500">→</span>{' '}
+                      <Link
+                        to={`/profile/${comment.replyToUserId._id}`}
+                        className="text-primary-500 hover:underline"
+                      >
+                        @{comment.replyToUserId.username}
+                      </Link>
+                    </>
+                  )}
+                  <span className="text-gray-300 ml-2">{displayContent}</span>
                 </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-4 mt-1 px-3">
-                <span className="text-xs text-gray-500">{timeAgo}</span>
-
-                {/* ✅ Reply button (only for top-level comments) */}
-                {!isReply && (
+                
+                {/* Read More / Read Less Button */}
+                {isLongComment && (
                   <button
-                    onClick={() => setIsReplying(!isReplying)}
-                    className="text-xs text-gray-400 hover:text-white transition-colors font-semibold"
+                    onClick={() => setShowFullContent(!showFullContent)}
+                    className="text-xs text-gray-400 hover:text-white font-semibold mt-1"
                   >
-                    Reply
+                    {showFullContent ? 'Read less' : 'Read more'}
                   </button>
                 )}
 
-                {isOwnComment && (
-                  <>
-                    <button
-                      onClick={handleEdit}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-semibold"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      disabled={deleteMutation.isPending}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors font-semibold"
-                    >
-                      {deleteMutation.isPending ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        'Delete'
-                      )}
-                    </button>
-                  </>
-                )}
+                {/* Actions */}
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs text-gray-500">{timeAgo}</span>
+
+                  {/* Reply button - tersedia untuk semua comment */}
+                  <button
+                    onClick={() => setIsReplying(!isReplying)}
+                    className="text-xs text-gray-400 hover:text-white font-semibold"
+                  >
+                    Reply
+                  </button>
+
+                  {isOwnComment && (
+                    <>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleteMutation.isPending}
+                        className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                      >
+                        {deleteMutation.isPending ? (
+                          <Loader2 size={12} className="animate-spin inline" />
+                        ) : (
+                          'Delete'
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
-              {/* ✅ Reply Input */}
+              {/* Reply Input */}
               {isReplying && (
                 <div className="mt-3 flex gap-2">
                   <div className="avatar w-8 h-8 bg-dark-800 flex-shrink-0">
                     {currentUser?.avatar ? (
                       <img
-                        src={currentUser.avatar}
+                        src={getMediaUrl(currentUser.avatar)}
                         alt={currentUser.username}
                         className="w-full h-full object-cover"
                       />
@@ -252,11 +277,12 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
                     )}
                   </div>
                   <div className="flex-1 space-y-2">
-                    <textarea
+                    <input
+                      type="text"
                       value={replyContent}
                       onChange={(e) => setReplyContent(e.target.value)}
-                      placeholder={`Reply to ${comment.userId.username}...`}
-                      className="input w-full min-h-[60px] resize-none text-sm"
+                      placeholder={`Reply to @${comment.userId.username}...`}
+                      className="input w-full text-sm py-2"
                       disabled={replyMutation.isPending}
                       autoFocus
                     />
@@ -264,12 +290,12 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
                       <button
                         onClick={handleReply}
                         disabled={replyMutation.isPending || !replyContent.trim()}
-                        className="btn btn-primary btn-sm"
+                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold disabled:opacity-50"
                       >
                         {replyMutation.isPending ? (
-                          <Loader2 size={14} className="animate-spin" />
+                          <Loader2 size={12} className="animate-spin inline" />
                         ) : (
-                          'Post Reply'
+                          'Post'
                         )}
                       </button>
                       <button
@@ -278,7 +304,7 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
                           setReplyContent('');
                         }}
                         disabled={replyMutation.isPending}
-                        className="btn btn-secondary btn-sm"
+                        className="text-xs text-gray-400 hover:text-white font-semibold"
                       >
                         Cancel
                       </button>
@@ -287,11 +313,11 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
                 </div>
               )}
 
-              {/* ✅ Show Replies Button */}
+              {/* Show Replies Button */}
               {!isReply && comment.replyCount > 0 && (
                 <button
                   onClick={() => setShowReplies(!showReplies)}
-                  className="flex items-center gap-2 mt-2 px-3 text-xs text-gray-400 hover:text-white transition-colors font-semibold"
+                  className="flex items-center gap-1 mt-2 text-xs text-gray-400 hover:text-white font-semibold"
                 >
                   {showReplies ? (
                     <>
@@ -309,9 +335,9 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
             </>
           )}
 
-          {/* ✅ Render Replies */}
+          {/* Render Replies */}
           {showReplies && !isReply && repliesData && repliesData.length > 0 && (
-            <div className="mt-3 space-y-3 border-l-2 border-dark-700 pl-4">
+            <div className="mt-3 space-y-3">
               {repliesData.map((reply) => (
                 <CommentItem
                   key={reply._id}
@@ -321,6 +347,7 @@ const CommentItem = ({ comment, onUpdate, isReply = false }) => {
                     onUpdate();
                   }}
                   isReply={true}
+                  parentCommentId={comment._id}
                 />
               ))}
             </div>
