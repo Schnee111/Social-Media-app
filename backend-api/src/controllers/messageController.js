@@ -6,8 +6,6 @@ const User = require('../models/User');
 const sendMessage = async (req, res) => {
   try {
     const { receiverId, content } = req.body;
-    
-    // ✅ Get senderId from req.user
     const senderId = req.user._id || req.user.userId;
     
     console.log('📤 Sending message:', {
@@ -45,29 +43,33 @@ const sendMessage = async (req, res) => {
     await message.save();
     console.log('✅ Message saved:', message._id);
 
-    // ✅ FIXED: Update or create conversation
+    // ✅ FIXED: Update or create conversation (without $expr)
     const participantIds = [senderId.toString(), receiverId.toString()].sort();
     
     console.log('🔍 Looking for conversation with participants:', participantIds);
-    
+
+    // Try to find existing conversation
     let conversation = await Conversation.findOne({
       participants: { $all: participantIds, $size: 2 }
     });
 
-    if (!conversation) {
-      console.log('📝 Creating new conversation');
-      conversation = new Conversation({
-        participants: participantIds,
-        lastMessage: message._id,
-        lastMessageAt: message.createdAt
-      });
-    } else {
+    if (conversation) {
+      // Update existing conversation
       console.log('📝 Updating existing conversation:', conversation._id);
       conversation.lastMessage = message._id;
       conversation.lastMessageAt = message.createdAt;
+      await conversation.save();
+    } else {
+      // Create new conversation
+      console.log('📝 Creating new conversation');
+      conversation = new Conversation({
+        participants: [senderId, receiverId],
+        lastMessage: message._id,
+        lastMessageAt: message.createdAt
+      });
+      await conversation.save();
     }
 
-    await conversation.save();
     console.log('✅ Conversation saved:', conversation._id);
 
     // Populate message with user data
@@ -76,14 +78,32 @@ const sendMessage = async (req, res) => {
       { path: 'receiverId', select: 'username avatar' }
     ]);
 
-    res.status(201).json({
+    console.log('✅ Message populated');
+
+    // ✅ EMIT SOCKET EVENT (with try-catch)
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('new-message', {
+          conversationId: conversation._id,
+          message: message
+        });
+        console.log('🔔 Socket event emitted: new-message');
+      }
+    } catch (socketError) {
+      console.error('⚠️ Socket emit error:', socketError);
+      // Don't fail the request if socket emit fails
+    }
+
+    // ✅ RETURN SUCCESS RESPONSE
+    return res.status(201).json({
       success: true,
       message: 'Message sent successfully',
       data: message
     });
   } catch (error) {
     console.error('❌ Send message error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to send message'
     });
@@ -143,7 +163,7 @@ const getConversations = async (req, res) => {
       .populate('participants', 'username avatar bio')
       .populate({
         path: 'lastMessage',
-        select: 'content media mediaType createdAt'
+        select: 'content media mediaType createdAt senderId receiverId'
       })
       .sort({ lastMessageAt: -1 });
 
