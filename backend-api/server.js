@@ -32,6 +32,7 @@ app.use('/api/users', require('./src/routes/userRoutes'));
 app.use('/api/posts', require('./src/routes/postRoutes'));
 app.use('/api/comments', require('./src/routes/commentRoutes'));
 app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
+app.use('/api/messages', require('./src/routes/messageRoutes'));
 
 // Root route
 app.get('/', (req, res) => {

@@ -14,6 +14,9 @@ router.get('/search', protect, userController.searchUsers);
 // Get saved posts
 router.get('/saved', protect, userController.getSavedPosts);
 
+// Get suggested users for messaging
+router.get('/suggestions', protect, userController.getSuggestedUsers);
+
 // Update profile
 router.put('/profile', protect, userController.updateProfile);
 
