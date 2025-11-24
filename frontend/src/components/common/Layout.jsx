@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Home, Search, PlusSquare, Heart, User, LogOut, BarChart3 } from 'lucide-react'; // ✅ Added BarChart3
+import { Home, Search, PlusSquare, MessageCircle, User, LogOut, BarChart3 } from 'lucide-react'; // ✅ Added MessageCircle
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -10,7 +10,8 @@ const Layout = () => {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/explore', icon: Search, label: 'Explore' },
     { path: '/create', icon: PlusSquare, label: 'Create' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' }, // ✅ NEW
+    { path: '/messages', icon: MessageCircle, label: 'Messages' }, // ✅ NEW
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: `/profile/${user?._id}`, icon: User, label: 'Profile' },
   ];
 
