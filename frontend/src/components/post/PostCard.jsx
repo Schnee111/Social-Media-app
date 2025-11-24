@@ -20,6 +20,24 @@ import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import CommentSection from '../comment/CommentSection';
 
+// Helper untuk mendapatkan URL gambar yang benar
+const getMediaUrl = (mediaPath) => {
+  if (!mediaPath) return null;
+  // Cek jika path sudah berupa URL penuh (Azure Blob URL)
+  if (mediaPath.startsWith('http')) return mediaPath;
+  
+  // Jika masih berupa path relatif (misal: /uploads/...)
+  // Kita harus menggunakan VITE_API_URL sebagai fallback base.
+  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+  return `${API_URL}${mediaPath}`;
+};
+
+const isVideo = (url) => {
+    if (!url) return false;
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.mov') || lowerUrl.endsWith('.avi');
+}
+
 const PostCard = ({ post, onUpdate }) => {
   const { user: currentUser } = useAuth();
   const [showComments, setShowComments] = useState(false);
@@ -132,6 +150,9 @@ const PostCard = ({ post, onUpdate }) => {
     locale: idLocale,
   });
 
+  const mediaUrl = getMediaUrl(post.image);
+  const isVideoPost = isVideo(mediaUrl);
+
   return (
     <div className="post-card">
       {/* Header */}
@@ -206,14 +227,29 @@ const PostCard = ({ post, onUpdate }) => {
         )}
       </div>
 
-      {/* Image */}
+      {/* media */}
       {post.image && (
         <div className="relative bg-dark-900">
-          <img
-            src={`http://localhost:5000${post.image}`}
-            alt="Post"
-            className="w-full max-h-[600px] object-cover"
-          />
+          {isVideoPost ? (
+            // 🆕 Tampilkan tag video
+            <video
+                src={mediaUrl}
+                controls
+                className="w-full max-h-[600px] object-cover"
+                onError={(e) => { console.error('Video load error:', post.image); e.target.style.display = 'none'; }}
+            />
+          ) : (
+            // Tampilkan tag img untuk gambar
+            <img
+              src={mediaUrl}
+              alt="Post"
+              className="w-full max-h-[600px] object-cover"
+              onError={(e) => {
+                  console.error('Image load error:', post.image);
+                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23262626"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23666"%3EImage load error%3C/text%3E%3C/svg%3E';
+                }}
+            />
+          )}
         </div>
       )}
 

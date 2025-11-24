@@ -6,6 +6,16 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 
+const getMediaUrl = (mediaPath) => {
+  if (!mediaPath) return null;
+  // Jika path sudah berupa URL penuh (Azure)
+  if (mediaPath.startsWith('http')) return mediaPath;
+  
+  // Jika masih berupa path relatif (local/uploads/)
+  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+  return `${API_URL}${mediaPath}`;
+};
+
 const ChatWindow = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -228,13 +238,13 @@ const ChatWindow = () => {
                       <div className="mb-2">
                         {msg.mediaType === 'image' ? (
                           <img
-                            src={`http://localhost:5000${msg.media}`}
+                            src={getMediaUrl(msg.media)} 
                             alt="Media"
                             className="rounded-lg max-w-full max-h-96 object-cover"
                           />
                         ) : (
                           <video
-                            src={`http://localhost:5000${msg.media}`}
+                            src={getMediaUrl(msg.media)}
                             controls
                             className="rounded-lg max-w-full max-h-96"
                           />

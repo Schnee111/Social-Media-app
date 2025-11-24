@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 const AnalyticsPage = () => {
   const [activeTab, setActiveTab] = useState('trending');
 
-  // Helper to get full image URL
+  // Helper to get full image URL (Handles both local path and full Azure URL)
   const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
   
   const getImageUrl = (imagePath) => {
@@ -26,6 +26,13 @@ const AnalyticsPage = () => {
     if (imagePath.startsWith('http')) return imagePath;
     return `${API_URL}${imagePath}`;
   };
+
+  // Helper untuk mengecek apakah URL adalah file video
+  const isVideo = (url) => {
+    if (!url) return false;
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.mov') || lowerUrl.endsWith('.avi');
+  }
 
   // Get trending posts
   const { data: trendingPosts, isLoading: trendingLoading } = useQuery({
@@ -159,7 +166,11 @@ const AnalyticsPage = () => {
 
               <div className="space-y-4">
                 {trendingPosts && trendingPosts.length > 0 ? (
-                  trendingPosts.map((post, index) => (
+                  trendingPosts.map((post, index) => {
+                    const mediaUrl = getImageUrl(post.image);
+                    const isVideoPost = isVideo(mediaUrl);
+
+                    return (
                     <div key={post._id} className="card p-6">
                       <div className="flex gap-4">
                         {/* Rank */}
@@ -177,9 +188,9 @@ const AnalyticsPage = () => {
                         {/* Content */}
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
-                            <Link to={`/profile/${post.user._id}`}>
+                            <Link to={`/profile/${post.user?._id}`}>
                               <div className="avatar w-10 h-10 bg-dark-800">
-                                {post.user.avatar ? (
+                                {post.user?.avatar ? (
                                   <img 
                                     src={getImageUrl(post.user.avatar)} 
                                     alt={post.user.username}
@@ -187,17 +198,17 @@ const AnalyticsPage = () => {
                                   />
                                 ) : (
                                   <span className="text-sm font-semibold">
-                                    {post.user.username.charAt(0).toUpperCase()}
+                                    {post.user?.username?.charAt(0).toUpperCase()}
                                   </span>
                                 )}
                               </div>
                             </Link>
                             <div>
                               <Link 
-                                to={`/profile/${post.user._id}`}
+                                to={`/profile/${post.user?._id}`}
                                 className="font-semibold hover:text-primary-500 transition-colors"
                               >
-                                {post.user.username}
+                                {post.user?.username}
                               </Link>
                               <p className="text-xs text-gray-400">
                                 {formatDistanceToNow(new Date(post.createdAt), { 
@@ -210,17 +221,26 @@ const AnalyticsPage = () => {
 
                           <p className="text-gray-300 mb-4">{post.content}</p>
 
-                          {/* Add getImageUrl */}
+                          {/* Tampilkan Gambar atau Video */}
                           {post.image && (
-                            <img 
-                              src={getImageUrl(post.image)} 
-                              alt="Post" 
-                              className="rounded-lg mb-4 max-h-96 w-full object-cover"
-                              onError={(e) => {
-                                console.error('Image load error:', post.image);
-                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23262626"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23666"%3EImage not found%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
+                            isVideoPost ? (
+                                <video
+                                    src={mediaUrl}
+                                    controls
+                                    className="rounded-lg mb-4 max-h-96 w-full object-cover"
+                                    onError={(e) => { console.error('Video load error:', post.image); e.target.style.display = 'none'; }}
+                                />
+                            ) : (
+                                <img 
+                                    src={mediaUrl} 
+                                    alt="Post" 
+                                    className="rounded-lg mb-4 max-h-96 w-full object-cover"
+                                    onError={(e) => {
+                                        console.error('Image load error:', post.image);
+                                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23262626"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23666"%3EImage not found%3C/text%3E%3C/svg%3E';
+                                    }}
+                                />
+                            )
                           )}
 
                           {/* Stats */}
@@ -246,7 +266,8 @@ const AnalyticsPage = () => {
                         </div>
                       </div>
                     </div>
-                  ))
+                  )}
+                )
                 ) : (
                   <div className="card p-12 text-center">
                     <p className="text-gray-400">Belum ada trending posts</p>
@@ -278,7 +299,8 @@ const AnalyticsPage = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {topUsers && topUsers.length > 0 ? (
-                  topUsers.map((user, index) => (
+                  topUsers.map((user, index) => { // 🔄 PERBAIKAN: Ubah ke explicit return untuk konsistensi
+                    return (
                     <Link
                       key={user._id}
                       to={`/profile/${user._id}`}
@@ -320,7 +342,7 @@ const AnalyticsPage = () => {
                           )}
                           
                           {/* Stats */}
-                          <div className="flex gap-4 mt-2 text-sm">
+                          <div className="flex gap-8 mt-2 text-sm">
                             <div>
                               <span className="font-semibold">{user.postsCount}</span>
                               <span className="text-gray-400 ml-1">posts</span>
@@ -339,7 +361,8 @@ const AnalyticsPage = () => {
                         </div>
                       </div>
                     </Link>
-                  ))
+                  )}
+                )
                 ) : (
                   <div className="card p-12 text-center col-span-2">
                     <p className="text-gray-400">Belum ada data users</p>
@@ -371,7 +394,11 @@ const AnalyticsPage = () => {
 
               <div className="space-y-4">
                 {topPosts && topPosts.length > 0 ? (
-                  topPosts.map((post, index) => (
+                  topPosts.map((post, index) => {
+                    const mediaUrl = getImageUrl(post.image);
+                    const isVideoPost = isVideo(mediaUrl);
+
+                    return (
                     <div key={post._id} className="card p-6">
                       <div className="flex gap-4">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
@@ -410,17 +437,26 @@ const AnalyticsPage = () => {
 
                           <p className="text-gray-300 mb-4">{post.content}</p>
 
-                          {/* Add getImageUrl for post images */}
+                          {/* Tampilkan Gambar atau Video */}
                           {post.image && (
-                            <img 
-                              src={getImageUrl(post.image)} 
-                              alt="Post" 
-                              className="rounded-lg mb-4 max-h-96 w-full object-cover"
-                              onError={(e) => {
-                                console.error('Image load error:', post.image);
-                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23262626"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23666"%3EImage not found%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
+                            isVideoPost ? (
+                                <video
+                                    src={mediaUrl}
+                                    controls
+                                    className="rounded-lg mb-4 max-h-96 w-full object-cover"
+                                    onError={(e) => { console.error('Video load error:', post.image); e.target.style.display = 'none'; }}
+                                />
+                            ) : (
+                                <img 
+                                    src={mediaUrl} 
+                                    alt="Post" 
+                                    className="rounded-lg mb-4 max-h-96 w-full object-cover"
+                                    onError={(e) => {
+                                        console.error('Image load error:', post.image);
+                                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23262626"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23666"%3EImage not found%3C/text%3E%3C/svg%3E';
+                                    }}
+                                />
+                            )
                           )}
 
                           <div className="flex items-center gap-6">
@@ -443,7 +479,8 @@ const AnalyticsPage = () => {
                         </div>
                       </div>
                     </div>
-                  ))
+                  )}
+                )
                 ) : (
                   <div className="card p-12 text-center">
                     <p className="text-gray-400">Belum ada data posts</p>
