@@ -33,27 +33,31 @@ const CreatePostPage = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('File harus berupa gambar');
+   if (file) {
+      // Validasi file type untuk Gambar atau Video
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        toast.error('File harus berupa gambar atau video');
         return;
       }
-
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Ukuran file maksimal 5MB');
+      // Perbarui batasan ukuran file menjadi 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Ukuran file maksimal 10MB');
         return;
       }
 
       setImageFile(file);
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+      // Create preview (Preview hanya dibuat jika itu gambar)
+      if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result);
+          };
+          reader.readAsDataURL(file);
+      } else {
+          // 🆕 Jika video, set preview ke string deskriptif
+          setImagePreview('VIDEO_FILE');
+      }
     }
   };
 
@@ -125,24 +129,32 @@ const CreatePostPage = () => {
               Gambar (Opsional)
             </label>
             
-            {!imagePreview ? (
+            {!imagePreview || imagePreview === 'VIDEO_FILE' ? (
               <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-dark-700 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="w-12 h-12 mb-3 text-gray-400" />
                   <p className="mb-2 text-sm text-gray-400">
                     <span className="font-semibold">Klik untuk upload</span> atau drag & drop
                   </p>
-                  <p className="text-xs text-gray-500">PNG, JPG, GIF, WEBP (MAX. 5MB)</p>
+                  <p className="text-xs text-gray-500">
+                    {/* 🔄 PERUBAHAN: Update daftar tipe file dan ukuran */}
+                    Gambar (PNG, JPG, GIF) atau Video (MP4, MOV). MAX. 10MB
+                  </p>
+                  {imagePreview === 'VIDEO_FILE' && (
+                     <p className="text-sm text-primary-500 mt-2">Video Terpilih: {imageFile.name}</p>
+                  )}
                 </div>
                 <input
                   type="file"
                   className="hidden"
-                  accept="image/*"
+                  // 🔄 PERUBAHAN DI SINI: Terima image/* dan video/*
+                  accept="image/*,video/*"
                   onChange={handleImageChange}
                   disabled={createPostMutation.isPending}
                 />
               </label>
             ) : (
+              // Tampilkan pratinjau gambar jika itu benar-benar gambar
               <div className="relative rounded-lg overflow-hidden bg-dark-900">
                 <img
                   src={imagePreview}
