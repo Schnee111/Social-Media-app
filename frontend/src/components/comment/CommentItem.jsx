@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
@@ -15,8 +15,73 @@ const getMediaUrl = (mediaPath) => {
   return `${API_URL}${mediaPath}`;
 };
 
+// ✅ Helper function to parse mentions in text
+const parseMentions = (text) => {
+  if (!text) return null;
+  
+  // Regex to match @username (letters, numbers, underscore)
+  const mentionRegex = /@(\w+)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = mentionRegex.exec(text)) !== null) {
+    // Add text before mention
+    if (match.index > lastIndex) {
+      parts.push({
+        type: 'text',
+        content: text.substring(lastIndex, match.index)
+      });
+    }
+
+    // Add mention
+    parts.push({
+      type: 'mention',
+      content: match[0], // @username
+      username: match[1] // username without @
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push({
+      type: 'text',
+      content: text.substring(lastIndex)
+    });
+  }
+
+  return parts.length > 0 ? parts : [{ type: 'text', content: text }];
+};
+
+// ✅ Component to render parsed content with clickable mentions
+const MentionText = ({ content, className = '', onMentionClick }) => {
+  const parts = parseMentions(content);
+
+  return (
+    <span className={className}>
+      {parts.map((part, index) => {
+        if (part.type === 'mention') {
+          return (
+            <span
+              key={index}
+              className="text-primary-500 hover:underline font-medium cursor-pointer"
+              onClick={() => onMentionClick(part.username)}
+            >
+              {part.content}
+            </span>
+          );
+        }
+        return <span key={index}>{part.content}</span>;
+      })}
+    </span>
+  );
+};
+
 const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = null }) => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isReplying, setIsReplying] = useState(false);
@@ -127,12 +192,26 @@ const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = nul
     });
   };
 
+  const handleMentionClick = async (username) => {
+    try {
+      // Search user by username
+      const response = await api.get(`/users/search?q=${username}`);
+      const user = response.data.data.find(u => u.username === username);
+      
+      if (user) {
+        navigate(`/profile/${user._id}`);
+      }
+    } catch (error) {
+      console.error('Failed to find user');
+    }
+  };
+
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), {
     addSuffix: true,
   });
 
   return (
-    <div className={`${isReply ? 'ml-6' : ''}`}>
+    <div className={`${isReply ? 'ml-10' : ''}`}>
       <div className="flex gap-3">
         {/* Avatar */}
         <Link to={`/profile/${comment.userId._id}`} className="flex-shrink-0">
@@ -211,7 +290,12 @@ const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = nul
                       </Link>
                     </>
                   )}
-                  <span className="text-gray-300 ml-2">{displayContent}</span>
+                  {/* ✅ Use MentionText component to parse and render mentions */}
+                  <MentionText 
+                    content={displayContent} 
+                    className="text-gray-300 ml-2" 
+                    onMentionClick={handleMentionClick}
+                  />
                 </p>
                 
                 {/* Read More / Read Less Button */}
