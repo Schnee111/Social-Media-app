@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Trash2, Check } from 'lucide-react';
@@ -6,6 +7,40 @@ import { markNotificationAsRead, deleteNotification } from '../../services/notif
 import toast from 'react-hot-toast';
 
 export const NotificationItem = ({ notification, onRead, onDelete }) => {
+    const navigate = useNavigate();
+
+    // Get avatar or create placeholder with initials
+    const getAvatarDisplay = () => {
+        const avatar = notification.senderId?.avatar;
+        const username = notification.senderId?.username || 'User';
+        
+        // If avatar exists and is not empty
+        if (avatar && avatar.trim()) {
+            return (
+                <img
+                    src={avatar}
+                    alt={`${username}'s avatar`}
+                    className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => {
+                        // Fallback to initials if image fails to load
+                        e.target.style.display = 'none';
+                        if (e.target.nextElementSibling) {
+                            e.target.nextElementSibling.style.display = 'flex';
+                        }
+                    }}
+                />
+            );
+        }
+        
+        // Placeholder with initials
+        const initials = username.substring(0, 2).toUpperCase();
+        return (
+            <div className="w-10 h-10 rounded-full bg-gradient-instagram flex items-center justify-center text-white text-xs font-bold">
+                {initials}
+            </div>
+        );
+    };
+
     const handleMarkAsRead = async () => {
         try {
             await markNotificationAsRead(notification._id);
@@ -64,14 +99,65 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
         locale: id
     });
 
+    const handleNotificationClick = () => {
+        // Mark as read
+        if (!notification.isRead) {
+            handleMarkAsRead();
+        }
+
+        // Navigate based on notification type
+        switch (notification.type) {
+            case 'like':
+            case 'comment':
+                // Navigate to post if relatedId exists
+                if (notification.relatedId?._id) {
+                    navigate(`/?postId=${notification.relatedId._id}`);
+                    // Or if you have a post detail page:
+                    // navigate(`/post/${notification.relatedId._id}`);
+                }
+                break;
+
+            case 'follow':
+                // Navigate to sender's profile
+                if (notification.senderId?._id) {
+                    navigate(`/profile/${notification.senderId._id}`);
+                }
+                break;
+
+            case 'message':
+                // Navigate to messages with sender
+                if (notification.senderId?._id) {
+                    navigate(`/messages/${notification.senderId._id}`);
+                }
+                break;
+
+            case 'story':
+                // Navigate to story viewer
+                if (notification.senderId?._id) {
+                    navigate(`/stories/${notification.senderId._id}`);
+                }
+                break;
+
+            default:
+                break;
+        }
+    };
+
     return (
         <div
-            className={`flex items-start gap-3 p-4 hover:bg-dark-800/50 transition-colors group ${
+            onClick={handleNotificationClick}
+            className={`flex items-start gap-3 p-4 hover:bg-dark-800/50 transition-colors group cursor-pointer ${
                 !notification.isRead ? 'bg-dark-800/30' : 'bg-dark-900/20'
             }`}
         >
-            {/* Notification Icon */}
-            <div className="text-2xl mt-0.5 flex-shrink-0">{getNotificationIcon()}</div>
+            {/* Avatar (preferred) or Notification Icon fallback */}
+            <div className="mt-0.5 flex-shrink-0">
+                {notification.senderId ? (
+                    getAvatarDisplay()
+                ) : (
+                    <div className="text-2xl">{getNotificationIcon()}</div>
+                )}
+            </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
@@ -82,7 +168,7 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                 {!notification.isRead && (
                     <button
                         onClick={handleMarkAsRead}

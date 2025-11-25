@@ -131,7 +131,7 @@ export const NotificationPanel = ({ isOpen, onClose }) => {
                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-dark-800 text-white rounded-lg hover:bg-dark-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
                         >
                             <CheckCircle2 size={16} />
-                            <span className="text-xs font-medium">Tandai Semua</span>
+                            <span className="text-xs font-medium">Tandai Dibaca</span>
                         </button>
                         <button
                             onClick={handleClearAll}
@@ -159,12 +159,16 @@ export const NotificationPanel = ({ isOpen, onClose }) => {
                     ) : (
                         <div className="divide-y divide-dark-800">
                             {filteredNotifications.map(notification => (
-                                <NotificationItem
+                                <div
                                     key={notification._id}
-                                    notification={notification}
-                                    onRead={handleItemRead}
-                                    onDelete={handleItemDelete}
-                                />
+                                    onClick={onClose}
+                                >
+                                    <NotificationItem
+                                        notification={notification}
+                                        onRead={handleItemRead}
+                                        onDelete={handleItemDelete}
+                                    />
+                                </div>
                             ))}
                         </div>
                     )}

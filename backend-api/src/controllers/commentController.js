@@ -1,5 +1,6 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
+const Notification = require('../models/Notification');
 
 // @desc    Create comment or reply
 // @route   POST /api/comments/post/:postId
@@ -9,6 +10,7 @@ exports.createComment = async (req, res) => {
     const { content, parentId, replyToUserId } = req.body;
     const { postId } = req.params;
     const userId = req.user.userId;
+    let parentComment = null;
 
     console.log('📝 Creating comment/reply:', { postId, userId, parentId });
 
@@ -31,7 +33,7 @@ exports.createComment = async (req, res) => {
 
     // ✅ If replying, check parent comment exists
     if (parentId) {
-      const parentComment = await Comment.findById(parentId);
+      parentComment = await Comment.findById(parentId);
       if (!parentComment) {
         return res.status(404).json({ 
           success: false,
@@ -65,6 +67,73 @@ exports.createComment = async (req, res) => {
       .populate('replyToUserId', 'username');
 
     console.log('✅ Comment populated:', populatedComment);
+
+    // --------------------------
+    // Create notification for comment/reply
+    // --------------------------
+    try {
+      // If this is a reply, notify the parent comment owner
+      if (parentId && parentComment) {
+        const recipientId = parentComment.userId.toString();
+        if (recipientId !== userId) {
+          console.log('🔵 NOTIF DEBUG - Reply detected. Creating notification for parent comment owner:', recipientId);
+
+          const notification = new Notification({
+            recipientId,
+            senderId: userId,
+            type: 'comment',
+            content: 'replied to your comment',
+            relatedId: populatedComment._id,
+            relatedType: 'Comment'
+          });
+
+          await notification.save();
+          await notification.populate('senderId', 'username avatar');
+          await notification.populate('relatedId', 'content');
+
+          const io = req.app.get('io');
+          const onlineUsers = req.app.get('onlineUsers');
+          const recipientSocketId = onlineUsers.get(recipientId);
+
+          console.log('   Socket emit -> recipient:', recipientId, 'socketId:', recipientSocketId || 'NOT_ONLINE');
+          if (recipientSocketId) {
+            io.to(recipientSocketId).emit('receive-notification', notification);
+            console.log('   ✅ Socket emitted reply notification');
+          }
+        }
+      } else {
+        // Top-level comment -> notify post owner (if not the commenter)
+        const recipientId = post.userId.toString();
+        if (recipientId !== userId) {
+          console.log('🔵 NOTIF DEBUG - Comment detected. Creating notification for post owner:', recipientId);
+
+          const notification = new Notification({
+            recipientId,
+            senderId: userId,
+            type: 'comment',
+            content: 'commented on your post',
+            relatedId: populatedComment._id,
+            relatedType: 'Comment'
+          });
+
+          await notification.save();
+          await notification.populate('senderId', 'username avatar');
+          await notification.populate('relatedId', 'content');
+
+          const io = req.app.get('io');
+          const onlineUsers = req.app.get('onlineUsers');
+          const recipientSocketId = onlineUsers.get(recipientId);
+
+          console.log('   Socket emit -> recipient:', recipientId, 'socketId:', recipientSocketId || 'NOT_ONLINE');
+          if (recipientSocketId) {
+            io.to(recipientSocketId).emit('receive-notification', notification);
+            console.log('   ✅ Socket emitted comment notification');
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('❌ Error creating/emitting comment notification:', notifErr);
+    }
 
     res.status(201).json({
       success: true,
