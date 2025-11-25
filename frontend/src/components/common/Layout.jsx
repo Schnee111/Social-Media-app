@@ -1,11 +1,19 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useMessage } from '../../context/MessageContext';
 import { Home, Search, PlusSquare, MessageCircle, User, LogOut, Flame, TrendingUp } from 'lucide-react';
 import { NotificationBell } from '../notification/NotificationBell';
+import { useEffect } from 'react';
 
 const Layout = () => {
   const { user, logout } = useAuth();
+  const { unreadCount } = useMessage();
   const location = useLocation();
+
+  // Debug log
+  useEffect(() => {
+    console.log('📨 Layout - Unread count updated:', unreadCount);
+  }, [unreadCount]);
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
@@ -38,14 +46,22 @@ const Layout = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 px-3 py-3 rounded-lg transition-colors ${
+                className={`flex items-center gap-4 px-3 py-3 rounded-lg transition-colors relative ${
                   isActive(item.path)
                     ? 'bg-dark-800 text-white'
                     : 'text-gray-400 hover:bg-dark-900 hover:text-white'
                 }`}
               >
                 <item.icon size={24} />
-                <span className="font-medium">{item.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{item.label}</span>
+                  {/* Unread Messages Badge */}
+                  {item.label === 'Messages' && unreadCount > 0 && (
+                    <div className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-max">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </div>
+                  )}
+                </div>
               </Link>
             ))}
           </nav>
@@ -100,13 +116,21 @@ const Layout = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center justify-center w-12 h-12 rounded-lg transition-colors ${
+              className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg transition-colors relative ${
                 isActive(item.path)
                   ? 'text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              <item.icon size={24} />
+              <div className="relative">
+                <item.icon size={24} />
+                {/* Unread Messages Badge */}
+                {item.label === 'Messages' && unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </div>
+                )}
+              </div>
             </Link>
           ))}
           {/* Notification Bell - Mobile */}

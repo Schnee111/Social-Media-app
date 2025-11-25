@@ -1,6 +1,58 @@
 const Story = require('../models/Story');
 const User = require('../models/User');
 const Follower = require('../models/Follower');
+const Notification = require('../models/Notification');
+
+// Helper function to notify followers of new story
+const notifyFollowers = async (userId, relatedId, relatedType, io, onlineUsers, req) => {
+  try {
+    console.log(`📢 notifyFollowers called for ${relatedType}:`, relatedId);
+    
+    // Get all followers of this user
+    const followers = await Follower.find({ followingId: userId }).select('followerId');
+    console.log(`📢 Found ${followers.length} followers`);
+
+    if (followers.length === 0) {
+      console.log('📢 No followers to notify');
+      return;
+    }
+
+    const followerIds = followers.map(f => f.followerId);
+
+    // Create notifications for each follower
+    for (const followerId of followerIds) {
+      try {
+        const notification = new Notification({
+          recipientId: followerId,
+          senderId: userId,
+          type: 'story',
+          content: 'membagikan cerita baru',
+          relatedId,
+          relatedType
+        });
+
+        await notification.save();
+        console.log(`   ✅ Notification saved for follower:`, followerId);
+
+        await notification.populate('senderId', 'username avatar');
+        await notification.populate('relatedId', 'media mediaType');
+
+        // Try to emit to follower if online
+        if (io && onlineUsers) {
+          const followerSocketId = onlineUsers.get(followerId.toString());
+          if (followerSocketId) {
+            io.to(followerSocketId).emit('receive-notification', notification);
+            console.log(`   📡 Notification emitted to follower:`, followerId);
+          }
+        }
+      } catch (err) {
+        console.error(`   ❌ Error creating notification for follower ${followerId}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error in notifyFollowers:', err.message);
+  }
+};
 
 // POST /api/stories - Create story
 exports.createStory = async (req, res) => {
@@ -28,6 +80,11 @@ exports.createStory = async (req, res) => {
 
     await story.save();
     await story.populate('userId', 'username avatar');
+
+    // Notify followers of new story
+    const io = req.app.get('io');
+    const onlineUsers = req.app.get('onlineUsers');
+    await notifyFollowers(userId, story._id, 'Story', io, onlineUsers, req);
 
     res.status(201).json({
       success: true,

@@ -69,6 +69,8 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
                 return '💬';
             case 'mention':
                 return '🏷️';
+            case 'post':
+                return '📝';
             case 'follow':
                 return '👤';
             case 'message':
@@ -88,6 +90,8 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
                 return `${notification.senderId?.username} mengomentari postingan Anda`;
             case 'mention':
                 return `${notification.senderId?.username} menyebut Anda`;
+            case 'post':
+                return `${notification.senderId?.username} membagikan postingan baru`;
             case 'follow':
                 return `${notification.senderId?.username} mulai mengikuti Anda`;
             case 'message':
@@ -118,6 +122,15 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
                 if (notification.relatedId?._id) {
                     const target = `/?postId=${notification.relatedId._id}`;
                     console.debug('🔔 Navigating to post (like)', target);
+                    navigate(target);
+                }
+                break;
+
+            case 'post':
+                // For post notifications, relatedId is the Post._id
+                if (notification.relatedId?._id) {
+                    const target = `/?postId=${notification.relatedId._id}`;
+                    console.debug('🔔 Navigating to post (new post notification)', target);
                     navigate(target);
                 }
                 break;

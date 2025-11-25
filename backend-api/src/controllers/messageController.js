@@ -208,7 +208,7 @@ const getConversations = async (req, res) => {
   }
 };
 
-// Get unread message count
+// Get unread message count (total)
 const getUnreadCount = async (req, res) => {
   try {
     const currentUserId = req.user._id || req.user.userId;
@@ -221,13 +221,65 @@ const getUnreadCount = async (req, res) => {
     res.json({
       success: true,
       message: 'Unread count retrieved successfully',
-      data: { unreadCount }
+      unreadCount
     });
   } catch (error) {
     console.error('❌ Get unread count error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get unread count'
+    });
+  }
+};
+
+// Get unread messages per conversation
+const getUnreadPerConversation = async (req, res) => {
+  try {
+    const currentUserId = req.user._id || req.user.userId;
+
+    // Get all conversations for current user
+    const conversations = await Conversation.find({
+      participants: currentUserId
+    }).populate('participants', 'username avatar _id');
+
+    // Get unread count for each conversation
+    const unreadPerConversation = await Promise.all(
+      conversations.map(async (conv) => {
+        // Count unread messages from the other participant
+        const unreadCount = await Message.countDocuments({
+          receiverId: currentUserId,
+          senderId: conv.participants.find(p => p._id.toString() !== currentUserId.toString())._id,
+          isRead: false
+        });
+
+        // Find the other participant
+        const otherUser = conv.participants.find(
+          p => p._id.toString() !== currentUserId.toString()
+        );
+
+        return {
+          conversationId: conv._id,
+          userId: otherUser._id,
+          username: otherUser.username,
+          avatar: otherUser.avatar,
+          unreadCount
+        };
+      })
+    );
+
+    // Filter out conversations with 0 unread
+    const filteredUnread = unreadPerConversation.filter(item => item.unreadCount > 0);
+
+    res.json({
+      success: true,
+      message: 'Unread per conversation retrieved successfully',
+      data: filteredUnread
+    });
+  } catch (error) {
+    console.error('❌ Get unread per conversation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get unread per conversation'
     });
   }
 };
@@ -275,5 +327,6 @@ module.exports = {
   getMessages,
   getConversations,
   getUnreadCount,
+  getUnreadPerConversation,
   deleteMessage
 };

@@ -91,21 +91,23 @@ const ProfilePage = () => {
     setShowEditModal(true);
   };
 
+  // Open post detail modal
   const handleOpenModal = (postId) => {
     setSelectedPostId(postId);
   };
 
-  const handleCloseModal = () => {
-    setSelectedPostId(null);
-  };
-
-  const handleModalUpdate = () => {
-    if (activeTab === 'posts') {
-      refetchProfile();
-    } else {
-      refetchSaved();
+  // Called when a post is updated/changed inside PostCard or PostDetailModal
+  // It will refetch the current tab (posts or saved) so the UI stays in sync
+  const handleModalUpdate = async () => {
+    try {
+      if (activeTab === 'posts') {
+        await refetchProfile();
+      } else {
+        await refetchSaved();
+      }
+    } catch (err) {
+      console.error('Error updating posts after modal action:', err);
     }
-    setSelectedPostId(null);
   };
 
   if (profileLoading) {
@@ -349,8 +351,8 @@ const ProfilePage = () => {
       {selectedPostId && (
         <PostDetailModal
           postId={selectedPostId}
-          onClose={handleCloseModal}
-          onUpdate={handleModalUpdate}
+          onClose={() => setSelectedPostId(null)}
+          onUpdate={activeTab === "posts" ? refetchProfile : refetchSaved}
         />
       )}
     </div>

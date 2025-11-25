@@ -12,6 +12,7 @@ router.use(protect);
 // Specific routes first
 router.get('/conversations/list', messageController.getConversations);
 router.get('/unread/count', messageController.getUnreadCount);
+router.get('/unread/per-conversation', messageController.getUnreadPerConversation);
 
 // POST route
 router.post('/', upload('media'), messageController.sendMessage);
