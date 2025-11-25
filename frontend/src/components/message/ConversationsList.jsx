@@ -16,22 +16,29 @@ const getMediaUrl = (mediaPath) => {
 const ConversationsList = () => {
   const navigate = useNavigate();
   const { userId: activeUserId } = useParams();
-  const { socket, onlineUsers } = useSocket();
+  const { socket, onlineUsers, isConnected } = useSocket();
   const [conversations, setConversations] = useState([]);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ✅ ADD: Better socket listener
   useEffect(() => {
     if (!socket) return;
 
+    console.log('📡 Setting up conversation listeners');
+
     const handleNewMessage = (messageData) => {
-      console.log('🔔 New message notification:', messageData);
-      fetchConversations();
+      console.log('🔔 New message in conversations:', messageData);
+      fetchConversations(); // Refresh conversation list
     };
 
-    socket.on('new-message', handleNewMessage);
-    return () => socket.off('new-message', handleNewMessage);
+    socket.on('receive-message', handleNewMessage);
+
+    return () => {
+      console.log('🧹 Cleaning up conversation listeners');
+      socket.off('receive-message', handleNewMessage);
+    };
   }, [socket]);
 
   useEffect(() => {

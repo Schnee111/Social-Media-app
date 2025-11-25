@@ -39,32 +39,74 @@ const ChatWindow = () => {
     const handleReceiveMessage = (messageData) => {
       console.log('📨 Received message:', messageData);
       
-      if (
-        (messageData.message.senderId._id === userId && messageData.message.receiverId._id === currentUser._id) ||
-        (messageData.message.senderId._id === currentUser._id && messageData.message.receiverId._id === userId)
-      ) {
-        setMessages((prev) => [...prev, messageData.message]);
+      const msg = messageData.message;
+      const isSender = msg.senderId?._id === userId || msg.senderId === userId;
+      const isReceiver = msg.receiverId?._id === currentUser._id || msg.receiverId === currentUser._id;
+      const isSentByMe = msg.senderId?._id === currentUser._id || msg.senderId === currentUser._id;
+      const isSentToThem = msg.receiverId?._id === userId || msg.receiverId === userId;
+      
+      const belongsToThisChat = (isSender && isReceiver) || (isSentByMe && isSentToThem);
+      
+      if (belongsToThisChat) {
+        console.log('✅ Adding message to this conversation');
+        setMessages((prev) => {
+          const exists = prev.some(m => m._id === msg._id);
+          if (exists) {
+            console.log('⚠️ Message already exists');
+            return prev;
+          }
+          return [...prev, msg];
+        });
+
+        // ✅ If message is from other user, mark as read
+        if (isSender && isReceiver) {
+          console.log('📖 Marking message as read');
+          socket.emit('mark-as-read', {
+            messageIds: [msg._id],
+            senderId: userId
+          });
+        }
       }
     };
 
     const handleUserTyping = (typingUserId) => {
-      if (typingUserId === userId) setIsTyping(true);
+      console.log('⌨️ User typing:', typingUserId);
+      if (typingUserId === userId) {
+        setIsTyping(true);
+      }
     };
 
     const handleUserStopTyping = (typingUserId) => {
-      if (typingUserId === userId) setIsTyping(false);
+      if (typingUserId === userId) {
+        setIsTyping(false);
+      }
+    };
+
+    // ✅ ADD: Handle messages read event
+    const handleMessagesRead = ({ messageIds }) => {
+      console.log('✅ Messages read by recipient:', messageIds);
+      
+      // Update messages to show as read (double check)
+      setMessages((prev) =>
+        prev.map((msg) =>
+          messageIds.includes(msg._id) ? { ...msg, isRead: true } : msg
+        )
+      );
     };
 
     socket.on('receive-message', handleReceiveMessage);
     socket.on('user-typing', handleUserTyping);
     socket.on('user-stop-typing', handleUserStopTyping);
+    socket.on('messages-read', handleMessagesRead); // ✅ ADD
 
     return () => {
+      console.log('🧹 Cleaning up message listeners');
       socket.off('receive-message', handleReceiveMessage);
       socket.off('user-typing', handleUserTyping);
       socket.off('user-stop-typing', handleUserStopTyping);
+      socket.off('messages-read', handleMessagesRead); // ✅ ADD
     };
-  }, [socket, userId, currentUser]);
+  }, [socket, userId, currentUser?._id]);
 
   useEffect(() => {
     if (userId && currentUser) {
@@ -76,6 +118,36 @@ const ChatWindow = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // ✅ ADD: Mark all unread messages as read when opening chat
+  useEffect(() => {
+    if (!socket || !messages.length || !currentUser) return;
+
+    // Find unread messages from other user
+    const unreadMessages = messages.filter(
+      (msg) =>
+        !msg.isRead &&
+        (msg.senderId?._id === userId || msg.senderId === userId) &&
+        (msg.receiverId?._id === currentUser._id || msg.receiverId === currentUser._id)
+    );
+
+    if (unreadMessages.length > 0) {
+      console.log('📖 Marking unread messages as read:', unreadMessages.length);
+      socket.emit('mark-as-read', {
+        messageIds: unreadMessages.map((m) => m._id),
+        senderId: userId
+      });
+
+      // ✅ Update local state immediately
+      setMessages((prev) =>
+        prev.map((msg) =>
+          unreadMessages.some((um) => um._id === msg._id)
+            ? { ...msg, isRead: true }
+            : msg
+        )
+      );
+    } 
+  }, [messages, socket, userId, currentUser?._id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -287,9 +359,8 @@ const ChatWindow = () => {
               <h2 className="font-semibold truncate text-base">
                 {otherUser.username || 'Unknown User'}
               </h2>
-              {isTyping ? (
-                <p className="text-xs text-primary-500 font-medium">typing...</p>
-              ) : isUserOnline ? (
+              {/* ✅ REMOVE typing text from status - only show online/offline */}
+              {isUserOnline ? (
                 <p className="text-xs text-green-500">Active now</p>
               ) : (
                 <p className="text-xs text-gray-500">Offline</p>
@@ -389,6 +460,20 @@ const ChatWindow = () => {
                 </div>
               );
             })}
+
+            {/* ✅ ADD: Typing indicator bubble */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-dark-800 px-4 py-3 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-typing-dot"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-typing-dot animation-delay-200"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-typing-dot animation-delay-400"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </>
         )}
