@@ -112,23 +112,6 @@ const ProfilePage = () => {
     setShowEditModal(true);
   };
 
-  const handleOpenModal = (postId) => {
-    setSelectedPostId(postId);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedPostId(null);
-  };
-
-  const handleModalUpdate = () => {
-    if (activeTab === 'posts') {
-      refetchProfile();
-    } else {
-      refetchSaved();
-    }
-    setSelectedPostId(null);
-  };
-
   if (profileLoading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -149,30 +132,14 @@ const ProfilePage = () => {
     : "";
 
   return (
-    <div className="max-w-4xl mx-auto pb-6"> {/* ✅ Changed from max-w-7xl to max-w-4xl */}
-      {/* Profile Header */}
-      <div className="card mb-6">
-        {/* Cover Photo Area */}
-        <div className="h-32 bg-gradient-to-r from-primary-500/20 via-pink-500/20 to-purple-500/20 rounded-t-xl"></div>
-        
-        <div className="px-8 pb-8">
-          {/* Avatar & Actions */}
-          <div className="flex items-end justify-between -mt-16 mb-6">
-            <div className="avatar-ring p-1 bg-gradient-instagram">
-              <div className="avatar w-32 h-32 bg-dark-900 border-4 border-dark-900">
-                {profile?.avatar ? (
-                  <img 
-                    src={getMediaUrl(profile.avatar)} 
-                    alt={profile.username} 
-                    className="w-full h-full object-cover" 
-                  />
-                ) : (
-                  <span className="text-4xl font-bold">
-                    {profile?.username?.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-            </div>
+    <div className="max-w-7xl mx-auto pb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2">
+          {/* Profile Header */}
+          <div className="card mb-6">
+            {/* Cover Photo Area */}
+            <div className="h-32 bg-gradient-to-r from-primary-500/20 via-pink-500/20 to-purple-500/20 rounded-t-xl"></div>
 
             <div className="px-8 pb-8">
               {/* Avatar & Actions */}
@@ -396,41 +363,10 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* Posts Feed */}
-      {currentLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="animate-spin text-primary-500" size={32} />
-        </div>
-      ) : currentPosts && currentPosts.length > 0 ? (
-        <div className="space-y-6">
-          {currentPosts.map((post) => (
-            <PostCard
-              key={post._id}
-              post={post}
-              onUpdate={handleModalUpdate}
-              onOpenModal={handleOpenModal}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="card p-12 text-center bg-gradient-to-br from-dark-900 to-black border border-dark-800">
-          <div className="w-20 h-20 bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            {activeTab === 'posts' ? (
-              <span className="text-4xl">📸</span>
-            ) : (
-              <span className="text-4xl">🔖</span>
-            )}
-          </div>
-          <h3 className="text-xl font-semibold mb-2">
-            {activeTab === 'posts' ? 'No posts yet' : 'No saved posts'}
-          </h3>
-          <p className="text-gray-400">
-            {activeTab === 'posts' 
-              ? 'Share your first post to get started' 
-              : 'Posts you save will appear here'}
-          </p>
-        </div>
-      )}
+      {/* Recommended Users (Mobile - Below Profile) */}
+      <div className="lg:hidden mt-6">
+        <RecommendedUsers limit={5} />
+      </div>
 
       {/* Modals */}
       <FollowersModal
@@ -452,8 +388,8 @@ const ProfilePage = () => {
       {selectedPostId && (
         <PostDetailModal
           postId={selectedPostId}
-          onClose={handleCloseModal}
-          onUpdate={handleModalUpdate}
+          onClose={() => setSelectedPostId(null)}
+          onUpdate={activeTab === "posts" ? refetchProfile : refetchSaved}
         />
       )}
     </div>
