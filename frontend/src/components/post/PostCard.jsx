@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Trash2,
   Edit,
+  MapPin,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -73,7 +74,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
     }
   };
 
-  // ✅ Force cleanup saat media berubah
+  // Force cleanup saat media berubah
   useEffect(() => {
     // Pause semua video yang masih playing
     const videos = document.querySelectorAll("video");
@@ -110,10 +111,31 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
       const response = await api.post(`/posts/${post._id}/like`);
       return response.data;
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries(['feed']);
+      const previousFeed = queryClient.getQueryData(['feed']);
+      // Optimistic update
+      queryClient.setQueryData(['feed'], (old) => {
+        if (!old) return old;
+        return old.map((p) =>
+          p._id === post._id
+            ? {
+                ...p,
+                isLiked: !p.isLiked,
+                likesCount: p.isLiked ? p.likesCount - 1 : p.likesCount + 1,
+              }
+            : p
+        );
+      });
+      return { previousFeed };
+    },
     onSuccess: () => {
       onUpdate();
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousFeed) {
+        queryClient.setQueryData(['feed'], context.previousFeed);
+      }
       toast.error(error.error || "Gagal like post");
     },
   });
@@ -123,10 +145,28 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
       const response = await api.post(`/posts/${post._id}/save`);
       return response.data;
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries(['feed']);
+      const previousFeed = queryClient.getQueryData(['feed']);
+      // Optimistic update
+      queryClient.setQueryData(['feed'], (old) => {
+        if (!old) return old;
+        return old.map((p) =>
+          p._id === post._id
+            ? { ...p, isSaved: !p.isSaved }
+            : p
+        );
+      });
+      return { previousFeed };
+    },
     onSuccess: () => {
       onUpdate();
+      queryClient.invalidateQueries(['savedPosts']);
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousFeed) {
+        queryClient.setQueryData(['feed'], context.previousFeed);
+      }
       toast.error(error.error || "Gagal save post");
     },
   });
@@ -160,7 +200,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
     }
   };
 
-  // ✅ Handler untuk open modal - hanya dari button comment
+  // Handler untuk open modal - hanya dari button comment
   const handleOpenComments = (e) => {
     e.stopPropagation();
     if (onOpenModal) {
@@ -223,7 +263,8 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
             </p>
             {post.location?.name ? (
               <p className="text-xs text-gray-400 flex items-center gap-1">
-                📍 {post.location.name}
+                <MapPin size={14} className="inline-block mr-1" /> 
+                {post.location.name}
               </p>
             ) : (
               <p className="text-xs text-gray-400">{timeAgo}</p>

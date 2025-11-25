@@ -346,16 +346,14 @@ const PostDetailModal = ({ postId, onClose, onUpdate, highlightCommentId = null 
     onMutate: async () => {
       await queryClient.cancelQueries(['post', postId]);
       const previousPost = queryClient.getQueryData(['post', postId]);
-      
       queryClient.setQueryData(['post', postId], (old) => {
         if (!old) return old;
         return { ...old, isSaved: !old.isSaved };
       });
-      
       return { previousPost };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['savedPosts'], { refetchType: 'none' });
+      queryClient.invalidateQueries(['savedPosts']); 
       onUpdate?.();
     },
     onError: (error, variables, context) => {
@@ -813,7 +811,7 @@ const PostDetailModal = ({ postId, onClose, onUpdate, highlightCommentId = null 
                         disabled={createCommentMutation.isPending || isEditMode}
                       />
 
-                      {/* ✅ Mention Dropdown */}
+                      {/* Mention Dropdown */}
                       {showMentions && (
                         <div 
                           ref={mentionBoxRef}
