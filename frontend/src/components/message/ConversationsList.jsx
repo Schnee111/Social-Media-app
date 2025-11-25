@@ -68,10 +68,24 @@ const ConversationsList = () => {
     user.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // ✅ Loading state sekarang di dalam container yang proper
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <Loader className="animate-spin text-primary-500" size={32} />
+      <div className="flex flex-col h-full w-full">
+        {/* Header tetap ada saat loading */}
+        <div className="p-4 border-b border-dark-800 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Messages</h1>
+          </div>
+        </div>
+        
+        {/* Loading di tengah area yang tersisa */}
+        <div className="flex-1 flex justify-center items-center">
+          <div className="flex flex-col items-center">
+            <Loader className="animate-spin text-primary-500 mb-3" size={32} />
+            <p className="text-gray-400 text-sm">Loading conversations...</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -82,13 +96,6 @@ const ConversationsList = () => {
       <div className="p-4 border-b border-dark-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Messages</h1>
-          {/* <button
-            onClick={() => navigate('/messages/new')}
-            className="p-2.5 hover:bg-dark-800 rounded-full transition-colors"
-            title="New message"
-          >
-            <Edit3 size={20} />
-          </button> */}
         </div>
 
         {/* Search Bar */}
