@@ -91,6 +91,25 @@ const ProfilePage = () => {
     setShowEditModal(true);
   };
 
+  // Open post detail modal
+  const handleOpenModal = (postId) => {
+    setSelectedPostId(postId);
+  };
+
+  // Called when a post is updated/changed inside PostCard or PostDetailModal
+  // It will refetch the current tab (posts or saved) so the UI stays in sync
+  const handleModalUpdate = async () => {
+    try {
+      if (activeTab === 'posts') {
+        await refetchProfile();
+      } else {
+        await refetchSaved();
+      }
+    } catch (err) {
+      console.error('Error updating posts after modal action:', err);
+    }
+  };
+
   if (profileLoading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
