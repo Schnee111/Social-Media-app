@@ -1,5 +1,6 @@
 // front/src/pages/HomePage.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import PostCard from '../components/post/PostCard';
@@ -9,6 +10,19 @@ import StoryFeed from '../components/story/StoryFeed';
 
 const HomePage = () => {
   const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedCommentId, setSelectedCommentId] = useState(null);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const pid = searchParams.get('postId');
+    const cid = searchParams.get('commentId');
+    if (pid) {
+      setSelectedPostId(pid);
+    }
+    if (cid) {
+      setSelectedCommentId(cid);
+    }
+  }, [searchParams]);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['feed'],
@@ -89,7 +103,11 @@ const HomePage = () => {
       {selectedPostId && (
         <PostDetailModal
           postId={selectedPostId}
-          onClose={() => setSelectedPostId(null)}
+          highlightCommentId={selectedCommentId}
+          onClose={() => {
+            setSelectedPostId(null);
+            setSelectedCommentId(null);
+          }}
           onUpdate={refetch}
         />
       )}

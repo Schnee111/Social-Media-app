@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, Loader2, Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Edit, Check } from 'lucide-react';
@@ -16,7 +16,7 @@ const getMediaUrl = (mediaPath) => {
   return `${API_URL}${mediaPath}`;
 };
 
-const PostDetailModal = ({ postId, onClose, onUpdate }) => {
+const PostDetailModal = ({ postId, onClose, onUpdate, highlightCommentId = null }) => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -50,6 +50,26 @@ const PostDetailModal = ({ postId, onClose, onUpdate }) => {
     },
     enabled: !!postId,
   });
+
+    // Scroll to and highlight a comment if requested
+    useEffect(() => {
+      if (!highlightCommentId) return;
+      // Wait a tick so comments are rendered
+      const id = `comment-${highlightCommentId}`;
+      const timeout = setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add temporary highlight class
+          el.classList.add('ring-2', 'ring-primary-500');
+          setTimeout(() => {
+            el.classList.remove('ring-2', 'ring-primary-500');
+          }, 3000);
+        }
+      }, 300);
+
+      return () => clearTimeout(timeout);
+    }, [highlightCommentId, comments]);
 
   const allMedia = post?.media || [];
   const hasMultipleMedia = allMedia.length > 1;

@@ -15,7 +15,7 @@ const getMediaUrl = (mediaPath) => {
   return `${API_URL}${mediaPath}`;
 };
 
-const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = null }) => {
+const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = null, highlight = false }) => {
   const { user: currentUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -132,7 +132,7 @@ const CommentItem = ({ comment, onUpdate, isReply = false, parentCommentId = nul
   });
 
   return (
-    <div className={`${isReply ? 'ml-6' : ''}`}>
+    <div id={`comment-${comment._id}`} className={`${isReply ? 'ml-6' : ''} ${highlight ? 'ring-2 ring-primary-500 bg-dark-800/50 rounded-lg p-2' : ''}`}>
       <div className="flex gap-3">
         {/* Avatar */}
         <Link to={`/profile/${comment.userId._id}`} className="flex-shrink-0">

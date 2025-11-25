@@ -335,3 +335,25 @@ exports.deleteComment = async (req, res) => {
     });
   }
 };
+
+// @desc    Get a single comment by id
+// @route   GET /api/comments/:id
+// @access  Public
+exports.getCommentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comment = await Comment.findById(id)
+      .populate('userId', 'username avatar bio')
+      .populate('replyToUserId', 'username')
+      .lean();
+
+    if (!comment) {
+      return res.status(404).json({ success: false, error: 'Comment not found' });
+    }
+
+    res.json({ success: true, data: comment });
+  } catch (error) {
+    console.error('❌ Get comment by id error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to get comment' });
+  }
+};

@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Trash2, Check } from 'lucide-react';
 import { markNotificationAsRead, deleteNotification } from '../../services/notificationService';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 export const NotificationItem = ({ notification, onRead, onDelete }) => {
@@ -99,7 +100,8 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
         locale: id
     });
 
-    const handleNotificationClick = () => {
+    const handleNotificationClick = async () => {
+        console.debug('🔔 Notification click:', notification);
         // Mark as read
         if (!notification.isRead) {
             handleMarkAsRead();
@@ -110,10 +112,31 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
             case 'like':
             case 'comment':
                 // Navigate to post if relatedId exists
-                if (notification.relatedId?._id) {
-                    navigate(`/?postId=${notification.relatedId._id}`);
-                    // Or if you have a post detail page:
-                    // navigate(`/post/${notification.relatedId._id}`);
+                // If the relatedId is a Comment (has postId), open the post and scroll to the comment
+                if (notification.relatedId?.postId) {
+                    const target = `/?postId=${notification.relatedId.postId}&commentId=${notification.relatedId._id}`;
+                    console.debug('🔔 Navigating to', target);
+                    navigate(target);
+                } else if (notification.relatedId?._id) {
+                    // Fallback: try fetching the comment to get its postId
+                    try {
+                        const commentId = notification.relatedId._id;
+                        console.debug('🔔 Fetching comment for fallback:', commentId);
+                        const res = await api.get(`/comments/${commentId}`);
+                        const comment = res.data.data;
+                        if (comment?.postId) {
+                            const target = `/?postId=${comment.postId}&commentId=${comment._id}`;
+                            console.debug('🔔 Navigating to (from fetched comment)', target);
+                            navigate(target);
+                        } else {
+                            // As a last resort, navigate to root
+                            console.warn('⚠️ Comment had no postId; opening feed');
+                            navigate('/');
+                        }
+                    } catch (err) {
+                        console.error('❌ Failed to fetch comment for notification fallback', err);
+                        navigate('/');
+                    }
                 }
                 break;
 
@@ -165,6 +188,15 @@ export const NotificationItem = ({ notification, onRead, onDelete }) => {
                     {getNotificationMessage()}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">{timeAgo}</p>
+
+                {/* If this is a comment notification, show a small preview of the comment/post */}
+                {notification.type === 'comment' && (notification.relatedId?.content || notification.content) && (
+                    <div className="mt-2 p-2 bg-dark-800 rounded text-xs text-gray-300">
+                        {String(notification.relatedId?.content || notification.content).length > 200
+                            ? String(notification.relatedId?.content || notification.content).slice(0, 200) + '...'
+                            : notification.relatedId?.content || notification.content}
+                    </div>
+                )}
             </div>
 
             {/* Actions */}
