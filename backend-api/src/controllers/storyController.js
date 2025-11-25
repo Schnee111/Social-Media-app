@@ -153,23 +153,44 @@ exports.viewStory = async (req, res) => {
     const { storyId } = req.params;
     const userId = req.user.userId;
 
-    // Pastikan hanya tambah viewer jika belum ada
-    const story = await Story.findByIdAndUpdate(
-      storyId,
-      { $addToSet: { viewers: { userId } } },
+    // 🚨 KUNCI PERBAIKAN: Gunakan findOneAndUpdate dengan kondisi $ne (Not Equal)
+    // Query memastikan: 
+    // 1. Story ID cocok.
+    // 2. User ID BELUM ADA di array viewers.
+    const story = await Story.findOneAndUpdate(
+      {
+        _id: storyId,
+        'viewers.userId': { $ne: userId } // ⬅️ Ini mencegah penambahan duplikat
+      },
+      { 
+        // Jika kondisi terpenuhi, push dokumen viewer baru
+        $push: { viewers: { userId, viewedAt: new Date() } } 
+      },
       { new: true }
     );
 
+    // Story akan null jika user sudah melihatnya (karena query find tidak match) atau ID salah.
     if (!story) {
-      return res.status(404).json({
-        success: false,
-        error: 'Story not found'
+      // Cek apakah story ID valid (ditemukan) atau sudah pernah dilihat.
+      const existingStory = await Story.findById(storyId);
+      
+      if (!existingStory) {
+        return res.status(404).json({
+          success: false,
+          error: 'Story not found'
+        });
+      }
+      
+      // Jika story ditemukan tetapi update gagal, berarti user sudah melihatnya.
+      return res.json({
+        success: true,
+        message: 'Story view already recorded' // Respon sukses agar frontend tidak error
       });
     }
 
     res.json({
       success: true,
-      message: 'Story viewed'
+      message: 'Story viewed successfully'
     });
   } catch (error) {
     console.error('View story error:', error);
@@ -240,8 +261,6 @@ exports.deleteStory = async (req, res) => {
     }
 
     // CATATAN: Hapus dari Azure bisa ditambahkan di sini jika diperlukan
-    // Namun karena middleware upload.js tidak expose fungsi deleteFromAzure,
-    // kita skip untuk sekarang atau tambahkan manual jika diperlukan
 
     await story.deleteOne();
 
