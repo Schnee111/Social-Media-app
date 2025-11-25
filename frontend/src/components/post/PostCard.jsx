@@ -263,7 +263,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
             </p>
             {post.location?.name ? (
               <p className="text-xs text-gray-400 flex items-center gap-1">
-                <MapPin size={14} className="inline-block mr-1" /> 
+                <MapPin size={14} className="inline-block mr-1" />
                 {post.location.name}
               </p>
             ) : (

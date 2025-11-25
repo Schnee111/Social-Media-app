@@ -6,7 +6,7 @@ import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import FollowersModal from '../components/user/FollowersModal';
 import EditProfileModal from '../components/user/EditProfileModal';
-import { Loader2, Settings, Grid, Bookmark, UserPlus, UserMinus, MessageCircle, MapPin, Link as LinkIcon, Calendar } from 'lucide-react';
+import { Loader2, Settings, Grid, Bookmark, UserPlus, UserMinus, MessageCircle, MapPin, Link as LinkIcon, Calendar, Camera, BookMarked } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -313,9 +313,9 @@ const ProfilePage = () => {
         <div className="card p-12 text-center bg-gradient-to-br from-dark-900 to-black border border-dark-800">
           <div className="w-20 h-20 bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
             {activeTab === 'posts' ? (
-              <span className="text-4xl">📸</span>
+              <Camera size={40} className="text-gray-400" />
             ) : (
-              <span className="text-4xl">🔖</span>
+              <BookMarked size={40} className="text-gray-400" />
             )}
           </div>
           <h3 className="text-xl font-semibold mb-2">
