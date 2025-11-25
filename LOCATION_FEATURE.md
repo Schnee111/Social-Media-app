@@ -1,6 +1,7 @@
 # 📍 Location Feature Documentation
 
 ## Overview
+
 Fitur lokasi memungkinkan user menambahkan lokasi ke post mereka saat upload, mirip dengan Instagram.
 
 ---
@@ -8,12 +9,14 @@ Fitur lokasi memungkinkan user menambahkan lokasi ke post mereka saat upload, mi
 ## ✅ Features Implemented
 
 ### 1. **Add Location to Post (Optional)**
+
 - ✅ Search location by name (e.g., "Bali, Indonesia")
 - ✅ Use current GPS location (geolocation API)
 - ✅ Display location name di post card
 - ✅ Store latitude & longitude coordinates
 
 ### 2. **Location Data Structure**
+
 ```javascript
 {
   location: {
@@ -30,6 +33,7 @@ Fitur lokasi memungkinkan user menambahkan lokasi ke post mereka saat upload, mi
 ## 🔧 Backend Changes
 
 ### 1. **Post Model** (`models/Post.js`)
+
 ```javascript
 location: {
     name: {
@@ -52,6 +56,7 @@ location: {
 ```
 
 ### 2. **Post Controller** (`controllers/postController.js`)
+
 - Parse `location` dari request body (JSON string)
 - Save location data ke database
 
@@ -59,18 +64,19 @@ location: {
 // Parse location if provided
 let locationData = null;
 if (location) {
-    try {
-        locationData = typeof location === 'string' ? JSON.parse(location) : location;
-    } catch (e) {
-        console.error('Location parse error:', e);
-    }
+  try {
+    locationData =
+      typeof location === "string" ? JSON.parse(location) : location;
+  } catch (e) {
+    console.error("Location parse error:", e);
+  }
 }
 
 const post = new Post({
-    userId,
-    content: content.trim(),
-    media: mediaUrls,
-    location: locationData  // NEW
+  userId,
+  content: content.trim(),
+  media: mediaUrls,
+  location: locationData, // NEW
 });
 ```
 
@@ -81,67 +87,74 @@ const post = new Post({
 ### 1. **CreatePostComponent** (`components/creation/CreatePostComponent.jsx`)
 
 #### New State:
+
 ```javascript
 const [location, setLocation] = useState(null);
-const [locationSearch, setLocationSearch] = useState('');
+const [locationSearch, setLocationSearch] = useState("");
 const [isSearchingLocation, setIsSearchingLocation] = useState(false);
 ```
 
 #### New Functions:
 
 **A. Get Current Location (GPS):**
+
 ```javascript
 const getCurrentLocation = () => {
   navigator.geolocation.getCurrentPosition(async (position) => {
     const { latitude, longitude } = position.coords;
-    
+
     // Reverse geocoding using Nominatim API (Free)
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
     );
     const data = await response.json();
-    
+
     setLocation({
       name: data.display_name,
       latitude,
       longitude,
-      address: data.display_name
+      address: data.display_name,
     });
   });
 };
 ```
 
 **B. Search Location by Name:**
+
 ```javascript
 const searchLocation = async () => {
   // Geocoding using Nominatim API
   const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationSearch)}`
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      locationSearch
+    )}`
   );
   const data = await response.json();
-  
+
   if (data && data.length > 0) {
     setLocation({
       name: locationSearch,
       latitude: parseFloat(data[0].lat),
       longitude: parseFloat(data[0].lon),
-      address: data[0].display_name
+      address: data[0].display_name,
     });
   }
 };
 ```
 
 **C. Remove Location:**
+
 ```javascript
 const removeLocation = () => {
   setLocation(null);
-  setLocationSearch('');
+  setLocationSearch("");
 };
 ```
 
 #### UI Components:
 
 **Search Location Input:**
+
 ```jsx
 <input
   type="text"
@@ -154,6 +167,7 @@ const removeLocation = () => {
 ```
 
 **Use Current Location Button:**
+
 ```jsx
 <button onClick={getCurrentLocation}>
   <MapPin size={18} />
@@ -162,42 +176,49 @@ const removeLocation = () => {
 ```
 
 **Selected Location Display:**
+
 ```jsx
-{location && (
-  <div className="flex items-start gap-3 p-3 bg-dark-800/50 rounded-lg">
-    <MapPin className="text-primary-500" size={20} />
-    <div>
-      <p className="font-medium">{location.name}</p>
-      <p className="text-xs text-gray-400">{location.address}</p>
-      <p className="text-xs text-gray-500">
-        📍 {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-      </p>
+{
+  location && (
+    <div className="flex items-start gap-3 p-3 bg-dark-800/50 rounded-lg">
+      <MapPin className="text-primary-500" size={20} />
+      <div>
+        <p className="font-medium">{location.name}</p>
+        <p className="text-xs text-gray-400">{location.address}</p>
+        <p className="text-xs text-gray-500">
+          📍 {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+        </p>
+      </div>
+      <button onClick={removeLocation}>
+        <X size={18} />
+      </button>
     </div>
-    <button onClick={removeLocation}>
-      <X size={18} />
-    </button>
-  </div>
-)}
+  );
+}
 ```
 
 **Append to FormData:**
+
 ```javascript
 if (location) {
-  formData.append('location', JSON.stringify(location));
+  formData.append("location", JSON.stringify(location));
 }
 ```
 
 ### 2. **PostCard Component** (`components/post/PostCard.jsx`)
 
 **Display Location:**
+
 ```jsx
-{post.location?.name ? (
-  <p className="text-xs text-gray-400 flex items-center gap-1">
-    📍 {post.location.name}
-  </p>
-) : (
-  <p className="text-xs text-gray-400">{timeAgo}</p>
-)}
+{
+  post.location?.name ? (
+    <p className="text-xs text-gray-400 flex items-center gap-1">
+      📍 {post.location.name}
+    </p>
+  ) : (
+    <p className="text-xs text-gray-400">{timeAgo}</p>
+  );
+}
 ```
 
 ---
@@ -216,16 +237,19 @@ if (location) {
 **Endpoints:**
 
 1. **Search Location (Forward Geocoding):**
+
 ```
 GET https://nominatim.openstreetmap.org/search?format=json&q=Bali,Indonesia
 ```
 
 2. **Reverse Geocoding (Coordinates → Address):**
+
 ```
 GET https://nominatim.openstreetmap.org/reverse?format=json&lat=-8.4095&lon=115.0920
 ```
 
 **Response Example:**
+
 ```json
 {
   "display_name": "Bali, Indonesia",
@@ -272,29 +296,34 @@ GET https://nominatim.openstreetmap.org/reverse?format=json&lat=-8.4095&lon=115.
 ## 🔮 Future Enhancements (NOT YET IMPLEMENTED)
 
 ### 1. **Explore Posts by Location**
+
 ```javascript
 GET /api/posts/location/:locationName
 GET /api/posts/nearby?lat=-8.4095&lng=115.0920&radius=10000
 ```
 
 ### 2. **Location Map View**
+
 - Interactive map (Leaflet/Mapbox)
 - Show pins for posts
 - Click pin → view post
 
 ### 3. **Trending Locations**
+
 ```javascript
-GET /api/locations/trending
+GET / api / locations / trending;
 // Returns top 20 locations by post count
 ```
 
 ### 4. **Geospatial Indexing**
+
 ```javascript
 // MongoDB 2dsphere index for nearby queries
-postSchema.index({ 'location.coordinates': '2dsphere' });
+postSchema.index({ "location.coordinates": "2dsphere" });
 ```
 
 ### 5. **Location History**
+
 - Track places user has posted from
 - "Your Travel Map"
 
@@ -305,6 +334,7 @@ postSchema.index({ 'location.coordinates': '2dsphere' });
 ### **Test Create Post with Location:**
 
 **Using Postman:**
+
 ```
 POST http://localhost:5000/api/posts
 Headers:
@@ -356,12 +386,14 @@ Body (form-data):
 ## 🔐 Privacy Considerations
 
 ### **User Control:**
+
 ✅ Location is **OPTIONAL** (user can skip)
 ✅ User can **remove location** before posting
 ✅ No location history tracking (yet)
 ✅ GPS permission required for "Use Current Location"
 
 ### **Security:**
+
 ✅ Exact coordinates stored but NOT displayed publicly
 ✅ Only show location name (city/landmark)
 ✅ No real-time tracking
@@ -373,6 +405,7 @@ Body (form-data):
 **Status:** ✅ **FULLY IMPLEMENTED**
 
 **What Works:**
+
 - ✅ Add location to post (optional)
 - ✅ Search location by name
 - ✅ Use GPS current location
@@ -380,6 +413,7 @@ Body (form-data):
 - ✅ Store coordinates & address
 
 **What's NOT Implemented (Future):**
+
 - ❌ Explore posts by location
 - ❌ Map view
 - ❌ Nearby posts

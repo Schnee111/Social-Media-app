@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../../services/api";
+import toast from "react-hot-toast";
 import {
   Heart,
   MessageCircle,
@@ -12,16 +12,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  Edit
-} from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale';
+  Edit,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
-const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const API_URL =
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
 
 const getMediaUrl = (mediaPath) => {
   if (!mediaPath) return null;
-  if (mediaPath.startsWith('http')) return mediaPath;
+  if (mediaPath.startsWith("http")) return mediaPath;
   return `${API_URL}${mediaPath}`;
 };
 
@@ -35,7 +36,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
 
   // Guard clause
   if (!post.userId || !post.userId._id) {
-    console.warn('⚠️ Post with null user:', post._id);
+    console.warn("⚠️ Post with null user:", post._id);
     return null;
   }
 
@@ -47,14 +48,18 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
   const hasMultipleMedia = allMedia.length > 1;
 
   // Story ring logic
-  const storiesFeed = queryClient.getQueryData(['storiesFeed']);
-  const postUserStoryGroup = storiesFeed?.find(group => group.user._id === post.userId._id);
+  const storiesFeed = queryClient.getQueryData(["storiesFeed"]);
+  const postUserStoryGroup = storiesFeed?.find(
+    (group) => group.user._id === post.userId._id
+  );
   const hasActiveStory = !!postUserStoryGroup;
   const hasUnviewed = postUserStoryGroup?.hasUnviewed || false;
 
   const getStoryRingClass = () => {
-    if (!hasActiveStory) return '';
-    return hasUnviewed ? 'p-0.5 bg-gradient-instagram' : 'p-0.5 border-2 border-dark-700';
+    if (!hasActiveStory) return "";
+    return hasUnviewed
+      ? "p-0.5 bg-gradient-instagram"
+      : "p-0.5 border-2 border-dark-700";
   };
 
   const ringClass = getStoryRingClass();
@@ -69,8 +74,8 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
   // ✅ Force cleanup saat media berubah
   useEffect(() => {
     // Pause semua video yang masih playing
-    const videos = document.querySelectorAll('video');
-    videos.forEach(video => {
+    const videos = document.querySelectorAll("video");
+    videos.forEach((video) => {
       if (!video.paused) {
         video.pause();
         video.currentTime = 0;
@@ -81,12 +86,16 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
   // Carousel navigation
   const handlePrevMedia = (e) => {
     e.stopPropagation();
-    setCurrentMediaIndex((prev) => (prev === 0 ? allMedia.length - 1 : prev - 1));
+    setCurrentMediaIndex((prev) =>
+      prev === 0 ? allMedia.length - 1 : prev - 1
+    );
   };
 
   const handleNextMedia = (e) => {
     e.stopPropagation();
-    setCurrentMediaIndex((prev) => (prev === allMedia.length - 1 ? 0 : prev + 1));
+    setCurrentMediaIndex((prev) =>
+      prev === allMedia.length - 1 ? 0 : prev + 1
+    );
   };
 
   const isVideo = (url) => {
@@ -103,7 +112,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
       onUpdate();
     },
     onError: (error) => {
-      toast.error(error.error || 'Gagal like post');
+      toast.error(error.error || "Gagal like post");
     },
   });
 
@@ -116,7 +125,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
       onUpdate();
     },
     onError: (error) => {
-      toast.error(error.error || 'Gagal save post');
+      toast.error(error.error || "Gagal save post");
     },
   });
 
@@ -125,11 +134,11 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
       await api.delete(`/posts/${post._id}`);
     },
     onSuccess: () => {
-      toast.success('Post berhasil dihapus');
+      toast.success("Post berhasil dihapus");
       onUpdate();
     },
     onError: (error) => {
-      toast.error(error.error || 'Gagal menghapus post');
+      toast.error(error.error || "Gagal menghapus post");
     },
   });
 
@@ -144,7 +153,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
   };
 
   const handleDelete = () => {
-    if (window.confirm('Yakin ingin menghapus post ini?')) {
+    if (window.confirm("Yakin ingin menghapus post ini?")) {
       deleteMutation.mutate();
     }
   };
@@ -180,9 +189,10 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
 
   // Truncate content for preview
   const MAX_LENGTH = 100;
-  const displayContent = post.content.length > MAX_LENGTH
-    ? post.content.slice(0, MAX_LENGTH) + '...'
-    : post.content;
+  const displayContent =
+    post.content.length > MAX_LENGTH
+      ? post.content.slice(0, MAX_LENGTH) + "..."
+      : post.content;
 
   return (
     <div className="post-card">
@@ -243,7 +253,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
                   <button
                     onClick={() => {
                       setShowMenu(false);
-                      onOpenModal && onOpenModal(post._id, 'edit');
+                      onOpenModal && onOpenModal(post._id, "edit");
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-blue-500 hover:bg-dark-800 rounded-lg transition-colors"
                   >
@@ -272,7 +282,9 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
             {isVideo(allMedia[currentMediaIndex]) ? (
               <video
                 key={`video-${post._id}-${currentMediaIndex}`}
-                src={`${getMediaUrl(allMedia[currentMediaIndex])}?t=${Date.now()}`}
+                src={`${getMediaUrl(
+                  allMedia[currentMediaIndex]
+                )}?t=${Date.now()}`}
                 controls
                 playsInline
                 preload="metadata"
@@ -319,8 +331,8 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
                     }}
                     className={`transition-all ${
                       index === currentMediaIndex
-                        ? 'w-2 h-2 bg-primary-500'
-                        : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/70'
+                        ? "w-2 h-2 bg-primary-500"
+                        : "w-1.5 h-1.5 bg-white/50 hover:bg-white/70"
                     } rounded-full`}
                   />
                 ))}
@@ -340,21 +352,18 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
         <button
           onClick={handleLike}
           disabled={likeMutation.isPending}
-          className={`post-action-btn ${post.isLiked ? 'text-red-500' : ''}`}
+          className={`post-action-btn ${post.isLiked ? "text-red-500" : ""}`}
         >
           <Heart
             size={24}
-            fill={post.isLiked ? 'currentColor' : 'none'}
+            fill={post.isLiked ? "currentColor" : "none"}
             className="transition-all"
           />
           {post.likesCount > 0 && <span>{post.likesCount}</span>}
         </button>
 
         {/* ✅ Comment button - triggers modal */}
-        <button
-          onClick={handleOpenComments}
-          className="post-action-btn"
-        >
+        <button onClick={handleOpenComments} className="post-action-btn">
           <MessageCircle size={24} />
           {post.commentsCount > 0 && <span>{post.commentsCount}</span>}
         </button>
@@ -362,11 +371,13 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
         <button
           onClick={handleSave}
           disabled={saveMutation.isPending}
-          className={`post-action-btn ml-auto ${post.isSaved ? 'text-yellow-500' : ''}`}
+          className={`post-action-btn ml-auto ${
+            post.isSaved ? "text-yellow-500" : ""
+          }`}
         >
           <Bookmark
             size={24}
-            fill={post.isSaved ? 'currentColor' : 'none'}
+            fill={post.isSaved ? "currentColor" : "none"}
             className="transition-all"
           />
         </button>
@@ -381,7 +392,7 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
             onClick={(e) => e.stopPropagation()}
           >
             {post.userId.username}
-          </Link>{' '}
+          </Link>{" "}
           <span className="text-gray-300">{displayContent}</span>
           {post.content.length > MAX_LENGTH && (
             <span className="text-gray-400"> ...selengkapnya</span>

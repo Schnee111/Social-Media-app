@@ -1,27 +1,36 @@
 // front/src/components/creation/CreatePostComponent.jsx
 
-import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useMutation } from '@tanstack/react-query';
-import api from '../../services/api';
-import toast from 'react-hot-toast';
-import { X, Loader2, Upload, Film, Plus, Image as ImageIcon, MapPin, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useMutation } from "@tanstack/react-query";
+import api from "../../services/api";
+import toast from "react-hot-toast";
+import {
+  X,
+  Loader2,
+  Upload,
+  Film,
+  Plus,
+  Image as ImageIcon,
+  MapPin,
+  Search,
+} from "lucide-react";
 
 const CreatePostComponent = ({ onPostCreated }) => {
   const { user } = useAuth();
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [location, setLocation] = useState(null);
-  const [locationSearch, setLocationSearch] = useState('');
+  const [locationSearch, setLocationSearch] = useState("");
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const fileInputRef = useRef(null);
 
   // Cleanup function: Membersihkan URL Object saat unmount
   useEffect(() => {
     return () => {
-      previews.forEach(preview => {
-        if (preview.url && !preview.url.startsWith('http')) {
+      previews.forEach((preview) => {
+        if (preview.url && !preview.url.startsWith("http")) {
           URL.revokeObjectURL(preview.url);
         }
       });
@@ -30,44 +39,45 @@ const CreatePostComponent = ({ onPostCreated }) => {
 
   const createPostMutation = useMutation({
     mutationFn: async (formData) => {
-      const response = await api.post('/posts', formData, {
+      const response = await api.post("/posts", formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
       return response.data;
     },
     onSuccess: () => {
-      toast.success('Post created successfully!');
+      toast.success("Post created successfully!");
       // Reset form
-      setContent('');
+      setContent("");
       setSelectedFiles([]);
       setPreviews([]);
       setLocation(null);
-      setLocationSearch('');
-      onPostCreated(); 
+      setLocationSearch("");
+      onPostCreated();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to create post');
+      toast.error(error.response?.data?.error || "Failed to create post");
     },
   });
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
-    
+
     // Limit to 10 media files
     if (selectedFiles.length + files.length > 10) {
-      toast.error('Maximum 10 media files per post');
+      toast.error("Maximum 10 media files per post");
       return;
     }
 
     // Validate file types and sizes
-    const validFiles = files.filter(file => {
-      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
         toast.error(`${file.name} is not an image or video file`);
         return false;
       }
-      if (file.size > 100 * 1024 * 1024) { // 100MB
+      if (file.size > 100 * 1024 * 1024) {
+        // 100MB
         toast.error(`${file.name} is too large (max 100MB)`);
         return false;
       }
@@ -77,11 +87,11 @@ const CreatePostComponent = ({ onPostCreated }) => {
     if (validFiles.length === 0) return;
 
     // Create previews
-    const newPreviews = validFiles.map(file => ({
+    const newPreviews = validFiles.map((file) => ({
       file,
       url: URL.createObjectURL(file),
-      type: file.type.startsWith('video/') ? 'video' : 'image',
-      name: file.name
+      type: file.type.startsWith("video/") ? "video" : "image",
+      name: file.name,
     }));
 
     setSelectedFiles([...selectedFiles, ...validFiles]);
@@ -90,64 +100,66 @@ const CreatePostComponent = ({ onPostCreated }) => {
 
   const removeFile = (index) => {
     // Revoke URL Object
-    if (previews[index].url && !previews[index].url.startsWith('http')) {
+    if (previews[index].url && !previews[index].url.startsWith("http")) {
       URL.revokeObjectURL(previews[index].url);
     }
-    
+
     setPreviews(previews.filter((_, i) => i !== index));
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
   };
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation not supported by your browser');
+      toast.error("Geolocation not supported by your browser");
       return;
     }
 
     setIsSearchingLocation(true);
-    toast.loading('Getting your location...');
+    toast.loading("Getting your location...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
+
         try {
           // Reverse geocoding menggunakan Nominatim (OpenStreetMap) - Free API
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
           );
           const data = await response.json();
-          
-          const locationName = data.display_name?.split(',').slice(0, 3).join(',') || 'Unknown Location';
-          
+
+          const locationName =
+            data.display_name?.split(",").slice(0, 3).join(",") ||
+            "Unknown Location";
+
           setLocation({
             name: locationName,
             latitude,
             longitude,
-            address: data.display_name
+            address: data.display_name,
           });
-          
+
           setLocationSearch(locationName);
           toast.dismiss();
-          toast.success('Location added!');
+          toast.success("Location added!");
         } catch (error) {
-          console.error('Geocoding error:', error);
+          console.error("Geocoding error:", error);
           setLocation({
             name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
             latitude,
             longitude,
-            address: null
+            address: null,
           });
           toast.dismiss();
-          toast.success('Location coordinates added!');
+          toast.success("Location coordinates added!");
         } finally {
           setIsSearchingLocation(false);
         }
       },
       (error) => {
-        console.error('Location error:', error);
+        console.error("Location error:", error);
         toast.dismiss();
-        toast.error('Could not get your location');
+        toast.error("Could not get your location");
         setIsSearchingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -156,34 +168,36 @@ const CreatePostComponent = ({ onPostCreated }) => {
 
   const searchLocation = async () => {
     if (!locationSearch.trim()) {
-      toast.error('Please enter a location');
+      toast.error("Please enter a location");
       return;
     }
 
     setIsSearchingLocation(true);
-    
+
     try {
       // Geocoding using Nominatim
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationSearch)}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          locationSearch
+        )}&limit=1`
       );
       const data = await response.json();
-      
+
       if (data && data.length > 0) {
         const result = data[0];
         setLocation({
           name: locationSearch,
           latitude: parseFloat(result.lat),
           longitude: parseFloat(result.lon),
-          address: result.display_name
+          address: result.display_name,
         });
-        toast.success('Location added!');
+        toast.success("Location added!");
       } else {
-        toast.error('Location not found');
+        toast.error("Location not found");
       }
     } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Failed to search location');
+      console.error("Search error:", error);
+      toast.error("Failed to search location");
     } finally {
       setIsSearchingLocation(false);
     }
@@ -191,7 +205,7 @@ const CreatePostComponent = ({ onPostCreated }) => {
 
   const removeLocation = () => {
     setLocation(null);
-    setLocationSearch('');
+    setLocationSearch("");
   };
 
   const handleSubmit = (e) => {
@@ -199,32 +213,32 @@ const CreatePostComponent = ({ onPostCreated }) => {
 
     // Validasi media wajib
     if (selectedFiles.length === 0) {
-      toast.error('Please select at least one image or video');
+      toast.error("Please select at least one image or video");
       return;
     }
 
     // Validasi caption wajib
     if (!content.trim()) {
-      toast.error('Please write a caption');
+      toast.error("Please write a caption");
       return;
     }
-    
+
     const formData = new FormData();
-    formData.append('content', content.trim());
-    
+    formData.append("content", content.trim());
+
     // Append all files dengan field name 'images'
-    selectedFiles.forEach(file => {
-      formData.append('images', file);
+    selectedFiles.forEach((file) => {
+      formData.append("images", file);
     });
 
     // Append location if provided
     if (location) {
-      formData.append('location', JSON.stringify(location));
+      formData.append("location", JSON.stringify(location));
     }
 
     // Debug log
-    console.log('📤 Uploading post with files:', selectedFiles.length);
-    if (location) console.log('📍 Location:', location.name);
+    console.log("📤 Uploading post with files:", selectedFiles.length);
+    if (location) console.log("📍 Location:", location.name);
 
     createPostMutation.mutate(formData);
   };
@@ -236,7 +250,11 @@ const CreatePostComponent = ({ onPostCreated }) => {
         <div className="avatar-ring">
           <div className="avatar w-12 h-12 bg-dark-800">
             {user?.avatar ? (
-              <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
+              <img
+                src={user.avatar}
+                alt={user.username}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <span className="text-lg font-semibold">
                 {user?.username?.charAt(0).toUpperCase()}
@@ -260,14 +278,15 @@ const CreatePostComponent = ({ onPostCreated }) => {
             </span>
           )}
         </label>
-        
+
         {previews.length === 0 ? (
           // Empty state - upload prompt
           <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-dark-700 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
               <Upload className="w-12 h-12 mb-3 text-gray-400" />
               <p className="mb-2 text-sm text-gray-400">
-                <span className="font-semibold">Click to upload</span> or drag & drop
+                <span className="font-semibold">Click to upload</span> or drag &
+                drop
               </p>
               <p className="text-xs text-gray-500">
                 Multiple images/videos supported (PNG, JPG, GIF, MP4, MOV)
@@ -289,15 +308,23 @@ const CreatePostComponent = ({ onPostCreated }) => {
           </label>
         ) : (
           // Preview Grid
-          <div className={`grid gap-2 ${
-            previews.length === 1 ? 'grid-cols-1' :
-            previews.length === 2 ? 'grid-cols-2' :
-            previews.length === 3 ? 'grid-cols-3' :
-            'grid-cols-2'
-          }`}>
+          <div
+            className={`grid gap-2 ${
+              previews.length === 1
+                ? "grid-cols-1"
+                : previews.length === 2
+                ? "grid-cols-2"
+                : previews.length === 3
+                ? "grid-cols-3"
+                : "grid-cols-2"
+            }`}
+          >
             {previews.map((preview, index) => (
-              <div key={index} className="relative group rounded-lg overflow-hidden bg-dark-900 aspect-square">
-                {preview.type === 'video' ? (
+              <div
+                key={index}
+                className="relative group rounded-lg overflow-hidden bg-dark-900 aspect-square"
+              >
+                {preview.type === "video" ? (
                   <video
                     src={preview.url}
                     className="w-full h-full object-cover"
@@ -310,7 +337,7 @@ const CreatePostComponent = ({ onPostCreated }) => {
                     className="w-full h-full object-cover"
                   />
                 )}
-                
+
                 {/* Remove button */}
                 <button
                   type="button"
@@ -320,14 +347,14 @@ const CreatePostComponent = ({ onPostCreated }) => {
                 >
                   <X size={16} />
                 </button>
-                
+
                 {/* Index badge */}
                 <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium">
                   {index + 1}/{previews.length}
                 </div>
-                
+
                 {/* Video badge */}
-                {preview.type === 'video' && (
+                {preview.type === "video" && (
                   <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
                     <Film size={12} />
                     <span>Video</span>
@@ -340,7 +367,7 @@ const CreatePostComponent = ({ onPostCreated }) => {
                 </div>
               </div>
             ))}
-            
+
             {/* Add More Button */}
             {previews.length < 10 && (
               <button
@@ -350,11 +377,15 @@ const CreatePostComponent = ({ onPostCreated }) => {
                 disabled={createPostMutation.isPending}
               >
                 <Plus size={32} className="text-gray-500" />
-                <span className="text-sm text-gray-500 font-medium">Add More</span>
-                <span className="text-xs text-gray-600">{10 - previews.length} left</span>
+                <span className="text-sm text-gray-500 font-medium">
+                  Add More
+                </span>
+                <span className="text-xs text-gray-600">
+                  {10 - previews.length} left
+                </span>
               </button>
             )}
-            
+
             {/* Hidden file input for "Add More" button */}
             <input
               ref={fileInputRef}
@@ -383,7 +414,8 @@ const CreatePostComponent = ({ onPostCreated }) => {
           required
         />
         <p className="text-xs text-gray-500 mt-1">
-          Share your thoughts about {previews.length > 1 ? 'these photos/videos' : 'this photo/video'}
+          Share your thoughts about{" "}
+          {previews.length > 1 ? "these photos/videos" : "this photo/video"}
         </p>
       </div>
 
@@ -392,7 +424,7 @@ const CreatePostComponent = ({ onPostCreated }) => {
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Add Location (Optional)
         </label>
-        
+
         {!location ? (
           <div className="space-y-2">
             {/* Search Location */}
@@ -402,23 +434,32 @@ const CreatePostComponent = ({ onPostCreated }) => {
                   type="text"
                   value={locationSearch}
                   onChange={(e) => setLocationSearch(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), searchLocation())}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), searchLocation())
+                  }
                   placeholder="Search location (e.g., Bali, Indonesia)"
                   className="input pr-10"
                   disabled={createPostMutation.isPending || isSearchingLocation}
                 />
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <Search
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  size={18}
+                />
               </div>
               <button
                 type="button"
                 onClick={searchLocation}
-                disabled={!locationSearch.trim() || isSearchingLocation || createPostMutation.isPending}
+                disabled={
+                  !locationSearch.trim() ||
+                  isSearchingLocation ||
+                  createPostMutation.isPending
+                }
                 className="btn btn-secondary px-4 whitespace-nowrap"
               >
                 {isSearchingLocation ? (
                   <Loader2 className="animate-spin" size={18} />
                 ) : (
-                  'Search'
+                  "Search"
                 )}
               </button>
             </div>
@@ -437,15 +478,21 @@ const CreatePostComponent = ({ onPostCreated }) => {
         ) : (
           // Selected Location Display
           <div className="flex items-start gap-3 p-3 bg-dark-800/50 rounded-lg border border-dark-700">
-            <MapPin className="text-primary-500 flex-shrink-0 mt-0.5" size={20} />
+            <MapPin
+              className="text-primary-500 flex-shrink-0 mt-0.5"
+              size={20}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm">{location.name}</p>
               {location.address && (
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{location.address}</p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">
+                  {location.address}
+                </p>
               )}
               {location.latitude && location.longitude && (
                 <p className="text-xs text-gray-500 mt-1">
-                  📍 {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                  📍 {location.latitude.toFixed(6)},{" "}
+                  {location.longitude.toFixed(6)}
                 </p>
               )}
             </div>
@@ -473,7 +520,11 @@ const CreatePostComponent = ({ onPostCreated }) => {
         </button>
         <button
           type="submit"
-          disabled={selectedFiles.length === 0 || !content.trim() || createPostMutation.isPending}
+          disabled={
+            selectedFiles.length === 0 ||
+            !content.trim() ||
+            createPostMutation.isPending
+          }
           className="btn btn-gradient flex-1 flex items-center justify-center gap-2"
         >
           {createPostMutation.isPending ? (
