@@ -1,6 +1,77 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+
+// Helper function to extract and notify mentions
+const handleMentions = async (content, senderId, relatedId, relatedType, io, onlineUsers, req) => {
+  try {
+    console.log('🏷️  handleMentions called with content:', content);
+    
+    // Extract all @username mentions from content
+    const mentionRegex = /@(\w+)/g;
+    const mentions = [];
+    let match;
+    
+    while ((match = mentionRegex.exec(content)) !== null) {
+      mentions.push(match[1]);
+    }
+
+    console.log('🏷️  Mentions found:', mentions.length > 0 ? mentions : 'none');
+
+    if (mentions.length === 0) {
+      console.log('🏷️  No mentions detected, skipping notification creation');
+      return;
+    }
+
+    console.log('🏷️  MENTIONS detected:', mentions);
+
+    // Find users matching the mentioned usernames
+    const mentionedUsers = await User.find({ username: { $in: mentions } }).select('_id username');
+    console.log('🏷️  Found users:', mentionedUsers.length);
+
+    // Create notifications for each mentioned user (if not the sender)
+    for (const user of mentionedUsers) {
+      if (user._id.toString() === senderId.toString()) {
+        console.log('   ⊘ Skipping self-mention for:', user.username);
+        continue; // Don't notify if mentioning yourself
+      }
+
+      try {
+        const notification = new Notification({
+          recipientId: user._id,
+          senderId,
+          type: 'mention',
+          content: `menyebut Anda di ${relatedType === 'Post' ? 'postingan' : 'komentar'}`,
+          relatedId,
+          relatedType
+        });
+
+        await notification.save();
+        console.log('   ✅ Mention notification saved for:', user.username);
+        
+        await notification.populate('senderId', 'username avatar');
+        await notification.populate('relatedId', 'content postId');
+
+        // Try to emit to recipient if online
+        if (io && onlineUsers) {
+          const recipientSocketId = onlineUsers.get(user._id.toString());
+          console.log('   📡 Checking socket for', user.username, '- socketId:', recipientSocketId || 'NOT_ONLINE');
+          if (recipientSocketId) {
+            io.to(recipientSocketId).emit('receive-notification', notification);
+            console.log('   ✅ Mention notification emitted to:', user.username);
+          }
+        } else {
+          console.log('   ⚠️ io or onlineUsers not available for socket emit');
+        }
+      } catch (err) {
+        console.error('   ❌ Error creating mention notification for', user.username, err.message);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error in handleMentions:', err.message);
+  }
+};
 
 // @desc    Create comment or reply
 // @route   POST /api/comments/post/:postId
@@ -131,6 +202,11 @@ exports.createComment = async (req, res) => {
           }
         }
       }
+
+      // Handle mentions in comment
+      const io = req.app.get('io');
+      const onlineUsers = req.app.get('onlineUsers');
+      await handleMentions(content.trim(), userId, populatedComment._id, 'Comment', io, onlineUsers, req);
     } catch (notifErr) {
       console.error('❌ Error creating/emitting comment notification:', notifErr);
     }
