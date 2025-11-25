@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -65,6 +65,18 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
       navigate(`/stories/${post.userId._id}`);
     }
   };
+
+  // ✅ Force cleanup saat media berubah
+  useEffect(() => {
+    // Pause semua video yang masih playing
+    const videos = document.querySelectorAll('video');
+    videos.forEach(video => {
+      if (!video.paused) {
+        video.pause();
+        video.currentTime = 0;
+      }
+    });
+  }, [currentMediaIndex]);
 
   // Carousel navigation
   const handlePrevMedia = (e) => {
@@ -246,20 +258,26 @@ const PostCard = ({ post, onUpdate, onOpenModal }) => {
         )}
       </div>
 
-      {/* Media Carousel - NO CLICK HANDLER */}
+      {/* Media Carousel */}
       {allMedia.length > 0 && (
         <div className="relative bg-dark-900 group">
           {/* Current Media */}
           <div className="relative w-full max-h-[600px] flex items-center justify-center bg-black">
             {isVideo(allMedia[currentMediaIndex]) ? (
               <video
-                key={currentMediaIndex}
-                src={getMediaUrl(allMedia[currentMediaIndex])}
+                key={`video-${post._id}-${currentMediaIndex}`}
+                src={`${getMediaUrl(allMedia[currentMediaIndex])}?t=${Date.now()}`}
                 controls
+                playsInline
+                preload="metadata"
                 className="w-full max-h-[600px] object-contain"
+                onLoadedMetadata={(e) => {
+                  e.target.currentTime = 0;
+                }}
               />
             ) : (
               <img
+                key={`image-${post._id}-${currentMediaIndex}`}
                 src={getMediaUrl(allMedia[currentMediaIndex])}
                 alt={`Post media ${currentMediaIndex + 1}`}
                 className="w-full max-h-[600px] object-contain"
