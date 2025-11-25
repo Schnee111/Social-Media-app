@@ -153,23 +153,18 @@ exports.viewStory = async (req, res) => {
     const { storyId } = req.params;
     const userId = req.user.userId;
 
-    const story = await Story.findById(storyId);
-    
+    // Pastikan hanya tambah viewer jika belum ada
+    const story = await Story.findByIdAndUpdate(
+      storyId,
+      { $addToSet: { viewers: { userId } } },
+      { new: true }
+    );
+
     if (!story) {
       return res.status(404).json({
         success: false,
         error: 'Story not found'
       });
-    }
-
-    // Check if already viewed
-    const alreadyViewed = story.viewers.some(
-      viewer => viewer.userId.toString() === userId
-    );
-
-    if (!alreadyViewed) {
-      story.viewers.push({ userId });
-      await story.save();
     }
 
     res.json({
