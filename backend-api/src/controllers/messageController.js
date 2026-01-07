@@ -82,21 +82,19 @@ const sendMessage = async (req, res) => {
     console.log('✅ Message populated');
 
     // ✅ EMIT SOCKET EVENT (with try-catch)
-    try {
-      const io = req.app.get('io');
-      if (io) {
-        io.emit('new-message', {
-          conversationId: conversation._id,
-          message: message
-        });
-        console.log('🔔 Socket event emitted: new-message');
-      }
-    } catch (socketError) {
-      console.error('⚠️ Socket emit error:', socketError);
-      // Don't fail the request if socket emit fails
-    }
-
-    // ✅ RETURN SUCCESS RESPONSE
+    // try {
+    //   const io = req.app.get('io');
+    //   if (io) {
+    //     io.emit('new-message', {
+    //       conversationId: conversation._id,
+    //       message: message
+    //     });
+    //     console.log('🔔 Socket event emitted: new-message');
+    //   }
+    // } catch (socketError) {
+    //   console.error('⚠️ Socket emit error:', socketError);
+    //   // Don't fail the request if socket emit fails
+    // }
     return res.status(201).json({
       success: true,
       message: 'Message sent successfully',
