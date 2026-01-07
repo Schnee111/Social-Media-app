@@ -436,7 +436,6 @@ const StoryViewerPage = () => {
                                 className="flex items-center gap-2 text-white hover:text-primary-400 transition-colors"
                             >
                                 <Eye size={20} />
-                                <span className="font-semibold">{currentStory.viewersCount || 0}</span>
                             </button>
                             
                             <div className="h-5 w-px bg-gray-600"></div> 

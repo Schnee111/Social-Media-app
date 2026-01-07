@@ -1,482 +1,177 @@
 # 🚀 Social Media API - Backend
 
-RESTful API untuk aplikasi social media menggunakan Node.js, Express, dan MongoDB.
+This is the backend for a full-featured social media application, providing a RESTful API and real-time communication using WebSockets. It's built with Node.js, Express, and MongoDB.
 
-## 📋 Daftar Isi
+## 📋 Table of Contents
 
-- [Fitur](#fitur)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Instalasi](#instalasi)
-- [Environment Variables](#environment-variables)
-- [Menjalankan Aplikasi](#menjalankan-aplikasi)
-- [API Documentation](#api-documentation)
-- [Database Schema](#database-schema)
-- [Testing](#testing)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Environment Variables](#-environment-variables)
+- [Running the Application](#-running-the-application)
+- [API Endpoints](#-api-endpoints)
+- [Real-time Functionality](#-real-time-functionality)
+- [Project Structure](#-project-structure)
+- [License](#-license)
 
 ---
 
-## ✨ Fitur
+## ✨ Features
 
-### Authentication
-- ✅ Register dengan email & password
-- ✅ Login dengan JWT token
-- ✅ Protected routes dengan middleware auth
+### Core
+- ✅ **Authentication:** Secure user registration and login using JWT.
+- ✅ **User Management:** User profiles, follow/unfollow, search, and profile updates.
+- ✅ **Post Management:** Create, read, update, delete posts (with images).
+- ✅ **Social Interaction:** Like/unlike, comment on posts, and save posts.
+- ✅ **Personalized Feeds:** Get a feed of posts from followed users.
+- ✅ **Story Feature:** Create and view stories that expire after a certain time.
 
-### User Management
-- ✅ Get current user profile
-- ✅ Get user profile by ID
-- ✅ Update profile (username, bio, avatar)
-- ✅ Search users by username/email
-- ✅ Follow/Unfollow users
-
-### Posts
-- ✅ Create post (text + optional image)
-- ✅ Get all posts (explore)
-- ✅ Get feed (posts from followed users)
-- ✅ Get post by ID
-- ✅ Update post
-- ✅ Delete post
-- ✅ Like/Unlike post
-- ✅ Save/Unsave post
-
-### Comments
-- ✅ Add comment to post
-- ✅ Get comments for post
-- ✅ Update comment
-- ✅ Delete comment
-
-### Interactions
-- ✅ Real-time like count
-- ✅ Real-time comment count
-- ✅ Saved posts collection
+### Real-time
+- ✅ **Live Notifications:** Receive real-time notifications for likes, comments, and follows.
+- ✅ **Real-time Chat:** One-on-one messaging with online status, typing indicators, and read receipts.
+- ✅ **Analytics:** Basic analytics endpoints.
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Runtime:** Node.js v18+
+- **Runtime:** Node.js
 - **Framework:** Express.js
-- **Database:** MongoDB (NoSQL)
+- **Database:** MongoDB
 - **ODM:** Mongoose
-- **Authentication:** JWT (jsonwebtoken)
+- **Real-time Communication:** Socket.IO
+- **Authentication:** JSON Web Tokens (jsonwebtoken)
 - **Password Hashing:** bcryptjs
-- **Validation:** express-validator
-- **File Upload:** Multer
-- **CORS:** cors
-- **Environment:** dotenv
+- **File Uploads:** Multer
+- **Cloud Storage:** Microsoft Azure Blob Storage (Optional)
+- **Middleware:** CORS, Helmet, Morgan (for logging)
 
 ---
 
 ## 📦 Prerequisites
 
-Pastikan sudah terinstall:
-
-- [Node.js](https://nodejs.org/) v18 atau lebih tinggi
-- [MongoDB](https://www.mongodb.com/) (Local atau Atlas)
-- npm atau yarn
+- [Node.js](https://nodejs.org/) (v18 or newer recommended)
+- [MongoDB](https://www.mongodb.com/) (either a local instance or a cloud-hosted one like MongoDB Atlas)
+- `npm` or another package manager.
 
 ---
 
-## 🔧 Instalasi
+## 🔧 Installation
 
-### 1. Clone Repository
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repository-url>
+    cd Social-Media-app/backend-api
+    ```
 
-```bash
-git clone <repository-url>
-cd backend-api
-```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-### 2. Install Dependencies
-
-```bash
-npm install
-```
-
-### 3. Setup Environment Variables
-
-Buat file `.env` di root folder:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` dengan konfigurasi Anda (lihat bagian Environment Variables).
-
-### 4. Buat Folder Uploads
-
-```bash
-mkdir uploads
-```
+3.  **Set up environment variables:**
+    Create a file named `.env` in the `backend-api` directory by copying the example file:
+    ```bash
+    cp .env.example .env
+    ```
+    Then, edit the `.env` file with your specific configuration. See the [Environment Variables](#-environment-variables) section below for details.
 
 ---
 
 ## 🔐 Environment Variables
 
-Buat file `.env` dengan isi:
+Your `.env` file should contain the following variables:
 
 ```env
 # Server Configuration
-PORT=5000
 NODE_ENV=development
+PORT=5000
 
-# Database
-MONGO_URI=mongodb://localhost:27017/sosmed-nosql
-# Atau gunakan MongoDB Atlas:
-# MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/sosmed-nosql
+# MongoDB Connection String
+# Example for local MongoDB: mongodb://localhost:27017/social-media
+# Example for Atlas: mongodb+srv://<user>:<password>@cluster.mongodb.net/yourDatabaseName
+MONGO_URI=your_mongodb_connection_string
 
-# JWT Secret
-JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-JWT_EXPIRE=7d
+# JWT Configuration
+JWT_SECRET=your_super_secret_and_long_jwt_key
+JWT_EXPIRE=30d
 
-# CORS
+# Frontend URL for CORS
+# This must match the URL where your frontend is running
 CORS_ORIGIN=http://localhost:5173
-```
 
-### ⚠️ Security Notes:
-- Ganti `JWT_SECRET` dengan random string yang kuat
-- Jangan commit file `.env` ke Git
-- Gunakan environment variables yang berbeda untuk production
+# --- Optional Azure Blob Storage ---
+# If you want to use Azure for file storage, provide these variables.
+# Otherwise, the server will use the local 'uploads/' directory.
+# AZURE_STORAGE_CONNECTION_STRING=your_azure_storage_connection_string
+# AZURE_STORAGE_CONTAINER_NAME=your_azure_container_name
+```
+**⚠️ Important:** Never commit your `.env` file to version control.
 
 ---
 
-## 🚀 Menjalankan Aplikasi
+## 🚀 Running the Application
 
-### Development Mode (dengan auto-reload)
+-   **Development Mode:**
+    For development with automatic server reloading on file changes (uses `nodemon`):
+    ```bash
+    npm run dev
+    ```
 
-```bash
-npm run dev
-```
+-   **Production Mode:**
+    For a standard production start:
+    ```bash
+    npm start
+    ```
 
-### Production Mode
-
-```bash
-npm start
-```
-
-Server akan berjalan di: `http://localhost:5000`
-
----
-
-## 📡 API Documentation
-
-### Base URL
-```
-http://localhost:5000/api
-```
-
-### Authentication Endpoints
-
-#### Register
-```http
-POST /auth/register
-Content-Type: application/json
-
-{
-  "username": "johndoe",
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-#### Login
-```http
-POST /auth/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Login berhasil",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "data": {
-    "_id": "...",
-    "username": "johndoe",
-    "email": "john@example.com",
-    "avatar": "",
-    "bio": ""
-  }
-}
-```
+The server will start on the port defined in your `.env` file (default is `5000`).
 
 ---
 
-### User Endpoints
+## 📡 API Endpoints
 
-**🔒 All user endpoints require authentication header:**
-```
-Authorization: Bearer <token>
-```
+The API is structured modularly. The base URL is `/api`.
 
-#### Get Current User
-```http
-GET /users/me
-```
-
-#### Get User Profile
-```http
-GET /users/:id
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "_id": "...",
-      "username": "johndoe",
-      "bio": "Hello world",
-      "postsCount": 10,
-      "followersCount": 25,
-      "followingCount": 30,
-      "isFollowing": false
-    },
-    "posts": [...]
-  }
-}
-```
-
-#### Update Profile
-```http
-PUT /users/profile
-Content-Type: application/json
-
-{
-  "username": "newusername",
-  "bio": "My new bio",
-  "avatar": "https://example.com/avatar.jpg"
-}
-```
-
-#### Search Users
-```http
-GET /users/search?q=john
-```
-
-#### Follow/Unfollow User
-```http
-POST /users/:id/follow
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Berhasil follow user",
-  "isFollowing": true
-}
-```
-
-#### Get Saved Posts
-```http
-GET /users/saved
-```
+-   `GET /`: Returns basic API information.
+-   `POST /api/auth/register`: Register a new user.
+-   `POST /api/auth/login`: Log in a user.
+-   `GET /api/users/me`: Get the current logged-in user's profile.
+-   `GET /api/users/:id`: Get a specific user's profile.
+-   `PUT /api/users/profile`: Update the logged-in user's profile.
+-   `POST /api/users/:id/follow`: Follow or unfollow a user.
+-   `GET /api/posts`: Get posts for the "explore" page.
+-   `GET /api/posts/feed`: Get the feed of posts from users you follow.
+-   `POST /api/posts`: Create a new post.
+-   `GET /api/posts/:id`: Get a single post by its ID.
+-   `DELETE /api/posts/:id`: Delete a post.
+-   `POST /api/posts/:id/like`: Like or unlike a post.
+-   `POST /api/comments/post/:postId`: Add a comment to a post.
+-   `GET /api/comments/post/:postId`: Get all comments for a post.
+-
+-   `/api/analytics`: Endpoints for application analytics.
+-   `/api/messages`: Endpoints for fetching and sending chat messages.
+-   `/api/stories`: Endpoints for creating and viewing stories.
+-   `/api/notifications`: Endpoints for managing notifications.
 
 ---
 
-### Post Endpoints
+##  WebSocket Real-time Functionality
 
-#### Create Post
-```http
-POST /posts
-Content-Type: application/json
+The server uses Socket.IO for real-time features.
 
-{
-  "content": "Hello world! This is my first post.",
-  "image": "https://example.com/image.jpg" // optional
-}
-```
-
-#### Get All Posts (Explore)
-```http
-GET /posts
-```
-
-#### Get Feed (Following)
-```http
-GET /posts/feed?page=1&limit=20
-```
-
-#### Get Post by ID
-```http
-GET /posts/:id
-```
-
-#### Update Post
-```http
-PUT /posts/:id
-Content-Type: application/json
-
-{
-  "content": "Updated content"
-}
-```
-
-#### Delete Post
-```http
-DELETE /posts/:id
-```
-
-#### Like/Unlike Post
-```http
-POST /posts/:id/like
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Post liked",
-  "isLiked": true,
-  "likesCount": 5
-}
-```
-
-#### Save/Unsave Post
-```http
-POST /posts/:id/save
-```
-
----
-
-### Comment Endpoints
-
-#### Add Comment
-```http
-POST /comments/post/:postId
-Content-Type: application/json
-
-{
-  "content": "Great post!"
-}
-```
-
-#### Get Comments
-```http
-GET /comments/post/:postId
-```
-
-#### Update Comment
-```http
-PUT /comments/:id
-Content-Type: application/json
-
-{
-  "content": "Updated comment"
-}
-```
-
-#### Delete Comment
-```http
-DELETE /comments/:id
-```
-
----
-
-## 🗄 Database Schema
-
-### User
-```javascript
-{
-  username: String (unique, 3-30 chars),
-  email: String (unique, valid email),
-  password: String (hashed, min 6 chars),
-  bio: String (max 150 chars),
-  avatar: String (URL),
-  createdAt: Date
-}
-```
-
-### Post
-```javascript
-{
-  userId: ObjectId (ref: User),
-  content: String (required, max 500 chars),
-  image: String (URL, optional),
-  createdAt: Date
-}
-```
-
-### Comment
-```javascript
-{
-  postId: ObjectId (ref: Post),
-  userId: ObjectId (ref: User),
-  content: String (required, max 500 chars),
-  createdAt: Date
-}
-```
-
-### Like
-```javascript
-{
-  postId: ObjectId (ref: Post),
-  userId: ObjectId (ref: User),
-  createdAt: Date
-}
-```
-
-### SavedPost
-```javascript
-{
-  postId: ObjectId (ref: Post),
-  userId: ObjectId (ref: User),
-  createdAt: Date
-}
-```
-
-### Follower
-```javascript
-{
-  followerId: ObjectId (ref: User),
-  followingId: ObjectId (ref: User),
-  createdAt: Date
-}
-```
-
----
-
-## 🧪 Testing
-
-### Run API Tests
-
-```bash
-node test-api.js
-```
-
-### Test Output:
-```
-════════════════════════════════════════════════════════════
-  📝 AUTHENTICATION TESTS
-════════════════════════════════════════════════════════════
-
-▶ Test 1: Register User 1
-✅ User 1 registered: user1_1763383534171
-
-▶ Test 2: Register User 2
-✅ User 2 registered: user2_1763383534671
-
-...
-
-════════════════════════════════════════════════════════════
-  TEST RESULTS
-════════════════════════════════════════════════════════════
-
-  ✅ Tests Passed: 24
-  ❌ Tests Failed: 0
-  📊 Total Tests: 24
-  📈 Pass Rate: 100.0%
-
-  🎉 ALL TESTS PASSED! 🎉
-```
+-   **Connection:** A client connects and joins with a `userId`.
+-   **Events Emitted by Server:**
+    -   `receive-message`: A new chat message is sent to the recipient.
+    -   `receive-notification`: A new notification (like, comment, follow) is sent to the recipient.
+    -   `user-online`, `user-offline`: Broadcasts when a user's connection status changes.
+    -   `online-users`: Sent to a newly connected client, listing all currently online users.
+-   **Events Listened for by Server:**
+    -   `join`: A user identifies themselves to the server.
+    -   `send-message`: A client sends a chat message to another user.
+    -   `send-notification`: A client action triggers a notification to another user.
+    -   `typing`, `stop-typing`: For chat typing indicators.
+    -   `mark-as-read`: To update the status of chat messages.
 
 ---
 
@@ -486,93 +181,34 @@ node test-api.js
 backend-api/
 ├── src/
 │   ├── config/
-│   │   └── db.js              # MongoDB connection
-│   ├── controllers/
-│   │   ├── authController.js  # Auth logic
-│   │   ├── userController.js  # User logic
-│   │   ├── postController.js  # Post logic
-│   │   └── commentController.js # Comment logic
-│   ├── models/
-│   │   ├── User.js
-│   │   ├── Post.js
-│   │   ├── Comment.js
-│   │   ├── Like.js
-│   │   ├── SavedPost.js
-│   │   └── Follower.js
-│   ├── routes/
-│   │   ├── authRoutes.js
-│   │   ├── userRoutes.js
-│   │   ├── postRoutes.js
-│   │   └── commentRoutes.js
-│   └── middleware/
-│       ├── auth.js            # JWT verification
-│       └── logger.js          # Request logger
-├── uploads/                    # Uploaded files
-├── .env                        # Environment variables
-├── .env.example               # Example env file
-├── server.js                  # Entry point
-├── test-api.js                # API tests
-├── package.json
-└── README.md
+│   │   └── db.js              # MongoDB connection logic
+│   ├── controllers/           # Handles request logic for each route
+│   │   ├── authController.js
+│   │   ├── userController.js
+│   │   ├── postController.js
+│   │   ├── commentController.js
+│   │   ├── messageController.js
+│   │   ├── storyController.js
+│   │   ├── notificationController.js
+│   │   └── analyticsController.js
+│   ├── middleware/            # Express middleware
+│   │   ├── auth.js            # JWT token verification
+│   │   ├── errorHandler.js    # Central error handler
+│   │   ├── logger.js          # Request logger
+│   │   └── upload.js          # Multer configuration for file uploads
+│   ├── models/                # Mongoose schemas for MongoDB
+│   │   ├── User.js, Post.js, Comment.js, etc.
+│   └── routes/                # Defines the API endpoints
+│       ├── authRoutes.js, userRoutes.js, etc.
+├── uploads/                   # Directory for locally stored file uploads
+├── .env                       # Environment variables (private)
+├── .env.example               # Example environment variables
+├── server.js                  # Main application entry point
+└── package.json               # Project dependencies and scripts
 ```
-
----
-
-## 🐛 Common Issues
-
-### 1. MongoDB Connection Error
-```
-Error: connect ECONNREFUSED 127.0.0.1:27017
-```
-**Solution:** Pastikan MongoDB sedang berjalan:
-```bash
-# Windows
-net start MongoDB
-
-# Mac/Linux
-sudo systemctl start mongod
-```
-
-### 2. JWT Token Invalid
-```
-Error: jwt malformed
-```
-**Solution:** 
-- Pastikan menyertakan Bearer token di header
-- Format: `Authorization: Bearer <token>`
-
-### 3. CORS Error
-```
-Access to fetch blocked by CORS policy
-```
-**Solution:** 
-- Periksa `CORS_ORIGIN` di `.env`
-- Pastikan sesuai dengan URL frontend
 
 ---
 
 ## 📝 License
 
-MIT License
-
----
-
-## 👨‍💻 Developer
-
-Developed with ❤️ by [Your Name]
-
----
-
-## 🤝 Contributing
-
-1. Fork the project
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
-
----
-
-## 📧 Support
-
-For support, email [your-email@example.com]
+This project is licensed under the MIT License.
