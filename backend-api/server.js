@@ -273,8 +273,7 @@ const PORT = process.env.PORT || 5000;
 (async () => {
     await checkAzureConnection();
 
-// USE SERVER INSTEAD OF APP
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📁 Uploads folder: ${path.join(__dirname, 'uploads')}`);
